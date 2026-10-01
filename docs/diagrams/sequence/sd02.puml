@@ -1,0 +1,81 @@
+@startuml
+actor "Home Cook" as U
+participant MealPlannerGUI as GUI
+participant MealPlannerFacade as F
+participant RecipeRepository as RR
+participant MealPlanningAgent as A
+participant RecommendationWorkflow as W
+participant LeftoverWorkflow as LW
+participant LLMProvider as LLM
+participant ToolManager as TM
+participant PantryQueryTool as PQT
+participant RecipeSearchTool as RST
+participant RecipeRanker as RK
+participant RecipeScoringStrategy as S
+participant PantryInventory as PI
+participant LeftoverTracker as LT
+participant ConstraintValidator as CV
+
+== F03: Ingredient search (deterministic) ==
+U -> GUI: enter ingredients + filters
+GUI -> F: searchByIngredients(ingredients, filters)
+F -> RR: searchByIngredients(names, filters)
+RR --> F: recipes
+F --> GUI: recipes
+GUI -> GUI: showRecipes(recipes)
+
+== F03: AI recommendation ==
+U -> GUI: "quick high-protein lunch"
+GUI -> F: recommendRecipes(prompt)
+F -> A: handle(request[RECOMMEND])
+A -> W: execute(request)
+W -> LLM: complete(extraction prompt)
+LLM --> W: PlanningRequirements
+alt missingInfo not empty
+    W --> A: AgentResponse(clarificationQuestions)
+    F --> GUI: askClarification(questions)
+else requirements complete
+    W -> TM: execute("pantry_query", input)
+    TM -> PQT: execute(input)
+    PQT --> TM: pantry items
+    W -> TM: execute("recipe_search", input)
+    TM -> RST: execute(input)
+    RST -> RK: rank(recipes, ctx)
+    loop each strategy
+        RK -> S: score(recipe, ctx)
+    end
+    RK --> RST: List<RecipeRecommendation>
+    W -> LLM: complete(recommendation prompt)
+    LLM --> W: reasons
+    W --> A: AgentResponse(recommendations)
+    A --> F: response
+    F --> GUI: recommendations
+    GUI -> GUI: showRecommendations(recs)
+end
+
+== F10: Leftover utilization ==
+U -> GUI: click Use Leftovers
+GUI -> F: suggestLeftoverUses()
+F -> A: handle(request[LEFTOVERS])
+A -> LW: execute(request)
+LW -> TM: execute("pantry_query", expiring)
+TM -> PI: getExpiringSoon(days)
+PI --> TM: items
+LW -> LT: getAvailable()
+LT --> LW: leftover portions
+alt nothing expiring and no leftovers
+    LW --> A: AgentResponse(message)
+    F --> GUI: showMessage("Nothing to use up")
+else something available
+    LW -> TM: execute("recipe_search", items)
+    TM --> LW: candidate recipes
+    LW -> LLM: complete(buildLeftoverPrompt)
+    LLM --> LW: suggestions JSON
+    LW -> CV: validateRecipe(suggestion, profile)
+    CV --> LW: ValidationResult
+    LW --> A: AgentResponse(recommendations)
+    A --> F: response
+    F --> GUI: recommendations
+    GUI -> GUI: showRecommendations(recs)
+end
+@enduml

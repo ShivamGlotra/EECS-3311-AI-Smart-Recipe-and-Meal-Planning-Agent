@@ -1,0 +1,52 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Home Cook" as User
+actor "LLM Service" as LLM <<external>>
+actor "Nutrition Data Service" as NDS <<external>>
+
+rectangle "SmartPlate" {
+    usecase "UC01 Manage Profile &\nDietary Constraints" as UC01
+    usecase "UC02 Manage Pantry\n(incl. cooking & purchases)" as UC02
+    usecase "UC03 Search Recipes &\nGet Recommendations" as UC03
+    usecase "UC04 Generate Recipe" as UC04
+    usecase "UC05 Generate Weekly\nMeal Plan" as UC05
+    usecase "UC06 Modify Plan with\nNatural Language" as UC06
+    usecase "UC07 Substitute Ingredient" as UC07
+    usecase "UC08 Adjust Servings" as UC08
+    usecase "UC09 View Nutrition Report" as UC09
+    usecase "UC10 Use Leftovers" as UC10
+    usecase "UC11 Generate Shopping List" as UC11
+}
+
+User --> UC01
+User --> UC02
+User --> UC03
+User --> UC04
+User --> UC05
+User --> UC06
+User --> UC07
+User --> UC08
+User --> UC09
+User --> UC10
+User --> UC11
+
+UC03 --> LLM
+UC04 --> LLM
+UC05 --> LLM
+UC06 --> LLM
+UC07 --> LLM
+UC10 --> LLM
+
+UC04 --> NDS
+UC07 --> NDS
+UC09 --> NDS
+
+UC03 ..> UC02 : <<include>>
+UC05 ..> UC02 : <<include>>
+UC05 ..> UC09 : <<include>>
+UC10 ..> UC02 : <<include>>
+UC11 ..> UC02 : <<include>>
+UC08 ..> UC06 : <<extend>>
+@enduml

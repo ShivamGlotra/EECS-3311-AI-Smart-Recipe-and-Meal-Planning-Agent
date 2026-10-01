@@ -1,0 +1,53 @@
+@startuml
+actor "Home Cook" as U
+participant MealPlannerGUI as GUI
+participant MealPlannerFacade as F
+participant MealPlanningAgent as A
+participant MealPlanWorkflow as W
+participant LLMProvider as LLM
+participant ToolManager as TM
+participant LLMRecipeFactory as RF
+participant MealPlan as MP
+participant ConstraintValidator as CV
+participant NutritionService as NS
+participant "planRepo:Repository" as PR
+
+U -> GUI: click Generate Week (options/prompt)
+GUI -> F: generateWeeklyPlan(prompt)
+F -> A: handle(request[PLAN_WEEK])
+A -> W: execute(request)
+W -> LLM: complete(extraction prompt)
+LLM --> W: PlanningRequirements
+alt missingInfo not empty
+    W --> A: clarificationQuestions
+    A --> F: response
+    F --> GUI: askClarification(questions)
+    U -> GUI: answers
+    GUI -> F: generateWeeklyPlan(prompt + answers)
+end
+W -> TM: execute("pantry_query", input)
+TM --> W: pantry + expiring items
+W -> TM: execute("recipe_search", input)
+TM --> W: ranked candidates
+loop attempt <= maxRetries
+    W -> LLM: complete(buildPlanPrompt)
+    LLM --> W: plan JSON
+    opt plan needs new recipes
+        W -> RF: createRecipe(raw)
+        RF --> W: Recipe
+    end
+    W -> MP: addDay(DayPlan) / addSlot(MealSlot)
+    W -> CV: validatePlan(plan, profile)
+    CV --> W: ValidationResult
+    alt violations
+        W -> W: append violations to prompt, retry
+    end
+end
+W -> NS: summarize(plan)
+NS --> W: NutritionInfo
+W -> PR: save(plan)
+W --> A: AgentResponse(plan)
+A --> F: response
+F --> GUI: plan
+GUI -> GUI: showMealPlan(plan)
+@enduml

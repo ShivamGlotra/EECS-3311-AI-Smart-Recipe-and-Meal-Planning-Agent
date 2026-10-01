@@ -1,0 +1,613 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam roundcorner 5
+
+' ================= PRESENTATION (MVC View) =================
+package "Presentation Layer" {
+    interface MealPlannerView {
+        + showMealPlan(plan: MealPlan): void
+        + showRecipes(recipes: List<Recipe>): void
+        + showRecommendations(recs: List<RecipeRecommendation>): void
+        + showShoppingList(list: ShoppingList): void
+        + showPantry(items: List<PantryItem>): void
+        + showNutritionReport(report: NutritionReport): void
+        + showMessage(msg: String): void
+        + showError(msg: String): void
+        + askClarification(questions: List<String>): void
+    }
+    class MealPlannerGUI <<View>> {
+        - weeklyCalendarPanel: Object
+        - recipeBrowserPanel: Object
+        - pantryPanel: Object
+        - shoppingListPanel: Object
+        - chatPane: Object
+        + onProfileSaved(profile: UserProfile): void
+        + onPantryEdited(item: PantryItem): void
+        + onSearchSubmitted(ingredients: List<String>): void
+        + onGenerateWeekClicked(prompt: String): void
+        + onChatSubmitted(message: String): void
+        + onPantryChanged(event: PantryEvent): void
+    }
+    class MealPlannerCLI <<View>> {
+        - scanner: Object
+        + runLoop(): void
+        + handleCommand(line: String): void
+    }
+}
+
+' ================= FACADE =================
+package "Application Layer" {
+    class MealPlannerFacade <<Facade>> {
+        - agent: MealPlanningAgent
+        - profileRepo: Repository<UserProfile>
+        - planRepo: Repository<MealPlan>
+        - recipeRepo: RecipeRepository
+        - pantry: PantryInventory
+        - shoppingListManager: ShoppingListManager
+        - nutritionService: NutritionService
+        - leftoverTracker: LeftoverTracker
+        - commandHistory: CommandHistory
+        - currentPlan: MealPlan
+        + saveProfile(profile: UserProfile): void
+        + addPantryItem(item: PantryItem): void
+        + updatePantryItem(item: PantryItem): void
+        + removePantryItem(itemId: String): void
+        + searchByIngredients(ingredients: List<String>, filters: SearchFilters): List<Recipe>
+        + recommendRecipes(prompt: String): List<RecipeRecommendation>
+        + generateRecipe(prompt: String): Recipe
+        + generateWeeklyPlan(prompt: String): MealPlan
+        + modifyPlan(instruction: String): MealPlan
+        + undoLastChange(): MealPlan
+        + redoChange(): MealPlan
+        + substituteIngredient(recipeId: String, ingredient: String, reason: String): SubstitutionResult
+        + applySubstitution(slotId: String, result: SubstitutionResult): MealPlan
+        + scaleRecipe(recipeId: String, servings: int): Recipe
+        + scaleSlotServings(slotId: String, servings: int): MealPlan
+        + getNutritionReport(planId: String, date: Date): NutritionReport
+        + suggestLeftoverUses(): List<RecipeRecommendation>
+        + generateShoppingList(planId: String): ShoppingList
+        + markMealCooked(slotId: String, leftoverPortions: int): void
+        + markItemsPurchased(itemIds: List<String>): void
+        + chat(message: String): AgentResponse
+    }
+}
+MealPlannerGUI ..|> MealPlannerView
+MealPlannerCLI ..|> MealPlannerView
+MealPlannerGUI --> MealPlannerFacade : invokes
+MealPlannerCLI --> MealPlannerFacade : invokes
+MealPlannerFacade --> MealPlannerView : updates via
+
+' ================= AGENT CORE =================
+package "Agent & Reasoning Core" {
+    class MealPlanningAgent {
+        - workflows: Map<Intent, AgentWorkflow>
+        - memory: AgentMemory
+        + handle(request: AgentRequest): AgentResponse
+        + classifyIntent(text: String): Intent
+    }
+    enum Intent {
+        PLAN_WEEK
+        GENERATE_RECIPE
+        MODIFY_PLAN
+        SUBSTITUTE
+        RECOMMEND
+        LEFTOVERS
+        GENERAL_QA
+    }
+    class AgentRequest {
+        - intent: Intent
+        - userText: String
+        - params: Map<String, Object>
+    }
+    class AgentResponse {
+        - status: String
+        - message: String
+        - payload: Object
+        - clarificationQuestions: List<String>
+    }
+    class AgentMemory {
+        - turns: List<String>
+        - activePlanId: String
+        + remember(turn: String): void
+        + getRecentContext(n: int): String
+        + clear(): void
+    }
+    class AgentContext {
+        - profile: UserProfile
+        - pantrySnapshot: List<PantryItem>
+        - currentPlan: MealPlan
+        - toolResults: Map<String, ToolResult>
+    }
+    class PlanningRequirements {
+        - days: int
+        - mealsPerDay: int
+        - servings: int
+        - targetCalories: double
+        - cuisines: List<String>
+        - usePantryFirst: boolean
+        - params: Map<String, String>
+        - missingInfo: List<String>
+        + hasMissingInfo(): boolean
+    }
+    abstract class AgentWorkflow {
+        # llm: LLMProvider
+        # toolManager: ToolManager
+        # validator: ConstraintValidator
+        # promptBuilder: PromptBuilder
+        # maxRetries: int
+        + {final} execute(request: AgentRequest): AgentResponse
+        # {abstract} extractRequirements(request: AgentRequest): PlanningRequirements
+        # {abstract} gatherContext(req: PlanningRequirements): AgentContext
+        # {abstract} buildPrompt(req: PlanningRequirements, ctx: AgentContext): Prompt
+        # {abstract} parseResult(raw: LLMResponse, ctx: AgentContext): Object
+        # validate(result: Object, ctx: AgentContext): ValidationResult
+        # {abstract} postProcess(result: Object, ctx: AgentContext): AgentResponse
+    }
+    class MealPlanWorkflow
+    class RecipeGenerationWorkflow
+    class PlanModificationWorkflow
+    class SubstitutionWorkflow
+    class RecommendationWorkflow
+    class LeftoverWorkflow
+    class PromptBuilder {
+        + buildPlanPrompt(req: PlanningRequirements, ctx: AgentContext): Prompt
+        + buildRecipePrompt(req: PlanningRequirements, ctx: AgentContext): Prompt
+        + buildEditPrompt(req: PlanningRequirements, ctx: AgentContext): Prompt
+        + buildSubstitutionPrompt(req: PlanningRequirements, ctx: AgentContext): Prompt
+        + buildRecommendationPrompt(req: PlanningRequirements, ctx: AgentContext): Prompt
+        + buildLeftoverPrompt(req: PlanningRequirements, ctx: AgentContext): Prompt
+    }
+    class ConstraintValidator {
+        + validatePlan(plan: MealPlan, profile: UserProfile): ValidationResult
+        + validateRecipe(recipe: Recipe, profile: UserProfile): ValidationResult
+    }
+    class ValidationResult {
+        - valid: boolean
+        - violations: List<String>
+        + isValid(): boolean
+        + getViolations(): List<String>
+    }
+    class RecipeRanker {
+        - strategies: List<RecipeScoringStrategy>
+        - weights: Map<String, Double>
+        + addStrategy(s: RecipeScoringStrategy, weight: double): void
+        + rank(recipes: List<Recipe>, ctx: AgentContext): List<RecipeRecommendation>
+    }
+    interface RecipeScoringStrategy <<Strategy>> {
+        + score(recipe: Recipe, ctx: AgentContext): double
+    }
+    class PantryOverlapStrategy
+    class PreferenceMatchStrategy
+    class NutritionFitStrategy
+    class RecipeRecommendation {
+        - recipe: Recipe
+        - score: double
+        - reason: String
+        - pantryMatchPercent: double
+    }
+    class PlanEditParser {
+        + toCommands(editJson: Map<String, Object>, plan: MealPlan): List<PlanCommand>
+    }
+}
+MealPlanningAgent "1" *--> "1" AgentMemory
+MealPlanningAgent "1" o--> "6" AgentWorkflow : selects by Intent
+MealPlanningAgent ..> AgentRequest
+MealPlanningAgent ..> AgentResponse
+MealPlanWorkflow --|> AgentWorkflow
+RecipeGenerationWorkflow --|> AgentWorkflow
+PlanModificationWorkflow --|> AgentWorkflow
+SubstitutionWorkflow --|> AgentWorkflow
+RecommendationWorkflow --|> AgentWorkflow
+LeftoverWorkflow --|> AgentWorkflow
+AgentWorkflow --> LLMProvider : uses
+AgentWorkflow --> ToolManager : uses
+AgentWorkflow --> ConstraintValidator : verifies with
+AgentWorkflow --> PromptBuilder : uses
+AgentWorkflow ..> PlanningRequirements
+AgentWorkflow ..> AgentContext
+ConstraintValidator ..> ValidationResult
+PlanModificationWorkflow ..> PlanEditParser
+RecommendationWorkflow ..> RecipeRecommendation
+MealPlannerFacade --> MealPlanningAgent : delegates AI tasks
+RecipeRanker "1" o--> "1..*" RecipeScoringStrategy
+PantryOverlapStrategy ..|> RecipeScoringStrategy
+PreferenceMatchStrategy ..|> RecipeScoringStrategy
+NutritionFitStrategy ..|> RecipeScoringStrategy
+RecipeRanker ..> RecipeRecommendation : produces
+
+' ================= TOOLS & ADAPTERS =================
+package "Tool & Adapter Layer" {
+    class ToolManager {
+        - tools: Map<String, AgentTool>
+        + registerTool(tool: AgentTool): void
+        + execute(name: String, input: ToolInput): ToolResult
+    }
+    interface AgentTool {
+        + getName(): String
+        + getDescription(): String
+        + execute(input: ToolInput): ToolResult
+    }
+    class RecipeSearchTool {
+        - recipeRepo: RecipeRepository
+        - ranker: RecipeRanker
+    }
+    class PantryQueryTool {
+        - pantry: PantryInventory
+    }
+    class NutritionLookupTool {
+        - nutritionService: NutritionService
+    }
+    class UnitConversionTool {
+        - converter: UnitConverter
+    }
+    class ToolInput {
+        - params: Map<String, Object>
+    }
+    class ToolResult {
+        - success: boolean
+        - data: Object
+        - error: String
+    }
+    interface LLMProvider <<Adapter Target>> {
+        + complete(prompt: Prompt): LLMResponse
+        + getModelName(): String
+    }
+    class AnthropicLLMAdapter <<Adapter>> {
+        - apiClient: Object
+        - apiKey: String
+        - modelName: String
+        + complete(prompt: Prompt): LLMResponse
+        + getModelName(): String
+        - callHttp(requestJson: String): String
+    }
+    class MockLLMAdapter <<Adapter>> {
+        - cannedResponses: Map<String, String>
+        + complete(prompt: Prompt): LLMResponse
+        + getModelName(): String
+    }
+    class Prompt {
+        - systemInstruction: String
+        - userMessage: String
+        - jsonSchema: String
+        + toJson(): String
+    }
+    class LLMResponse {
+        - rawText: String
+        - parsedJson: Map<String, Object>
+        - tokensUsed: int
+    }
+    interface NutritionProvider <<Adapter Target>> {
+        + lookup(ingredientName: String, quantity: double, unit: String): NutritionInfo
+    }
+    class NutritionApiAdapter <<Adapter>> {
+        - apiClient: Object
+        + lookup(ingredientName: String, quantity: double, unit: String): NutritionInfo
+    }
+    class LocalNutritionTableAdapter <<Adapter>> {
+        - table: Map<String, NutritionInfo>
+        + lookup(ingredientName: String, quantity: double, unit: String): NutritionInfo
+    }
+}
+ToolManager "1" o--> "*" AgentTool : registers
+RecipeSearchTool ..|> AgentTool
+PantryQueryTool ..|> AgentTool
+NutritionLookupTool ..|> AgentTool
+UnitConversionTool ..|> AgentTool
+AgentTool ..> ToolInput
+AgentTool ..> ToolResult
+RecipeSearchTool --> RecipeRanker
+RecipeSearchTool --> RecipeRepository
+PantryQueryTool --> PantryInventory
+NutritionLookupTool --> NutritionService
+UnitConversionTool --> UnitConverter
+AnthropicLLMAdapter ..|> LLMProvider
+MockLLMAdapter ..|> LLMProvider
+LLMProvider ..> Prompt
+LLMProvider ..> LLMResponse
+NutritionApiAdapter ..|> NutritionProvider
+LocalNutritionTableAdapter ..|> NutritionProvider
+NutritionService --> NutritionProvider : delegates lookup
+
+' ================= FACTORY METHOD =================
+package "Factory Layer" {
+    abstract class RecipeFactory <<Creator>> {
+        + {abstract} createRecipe(raw: Map<String, Object>): Recipe
+    }
+    class LLMRecipeFactory <<Concrete Creator>> {
+        + createRecipe(raw: Map<String, Object>): Recipe
+    }
+    class CatalogRecipeFactory <<Concrete Creator>> {
+        + createRecipe(raw: Map<String, Object>): Recipe
+    }
+}
+LLMRecipeFactory --|> RecipeFactory
+CatalogRecipeFactory --|> RecipeFactory
+RecipeFactory ..> Recipe : instantiates
+RecipeGenerationWorkflow ..> LLMRecipeFactory : uses
+MealPlanWorkflow ..> LLMRecipeFactory : uses
+RecipeRepository ..> CatalogRecipeFactory : imports via
+
+' ================= DOMAIN: PROFILE / RECIPE =================
+package "Domain: Profile & Recipes" {
+    class UserProfile {
+        - userId: String
+        - name: String
+        - dietaryTypes: List<String>
+        - allergies: Set<String>
+        - dislikedIngredients: Set<String>
+        - favoriteCuisines: List<String>
+        - calorieTarget: double
+        - proteinTarget: double
+        - defaultServings: int
+        - maxCookTimeMin: int
+        + validate(): List<String>
+    }
+    class Recipe {
+        - id: String
+        - title: String
+        - instructions: List<String>
+        - servings: int
+        - prepTimeMin: int
+        - cookTimeMin: int
+        - cuisine: String
+        - tags: Set<String>
+        - source: String
+        - nutritionPerServing: NutritionInfo
+        + scaleTo(servings: int): Recipe
+        + applySubstitution(result: SubstitutionResult): Recipe
+        + containsIngredient(name: String): boolean
+        + getIngredients(): List<RecipeIngredient>
+    }
+    class RecipeIngredient {
+        - name: String
+        - quantity: double
+        - unit: String
+        - optional: boolean
+    }
+    class NutritionInfo {
+        - calories: double
+        - proteinG: double
+        - carbsG: double
+        - fatG: double
+        - fiberG: double
+        - sodiumMg: double
+        + add(other: NutritionInfo): NutritionInfo
+        + scale(factor: double): NutritionInfo
+    }
+    class SubstitutionResult {
+        - originalIngredient: String
+        - substitute: RecipeIngredient
+        - reason: String
+        - nutritionDelta: NutritionInfo
+    }
+    class SearchFilters {
+        - dietaryTypes: List<String>
+        - maxTimeMin: int
+        - cuisine: String
+    }
+    class RecipeRepository {
+        + searchByIngredients(names: List<String>, filters: SearchFilters): List<Recipe>
+        + importCatalog(file: String): int
+    }
+}
+Recipe "1" *--> "1..*" RecipeIngredient
+Recipe "1" *--> "0..1" NutritionInfo
+SubstitutionResult "1" --> "1" RecipeIngredient
+RecipeRepository ..> SearchFilters
+
+' ================= DOMAIN: PANTRY (OBSERVER) =================
+package "Domain: Pantry" {
+    class PantryInventory <<Subject>> {
+        - items: List<PantryItem>
+        - observers: List<PantryObserver>
+        - repo: Repository<PantryItem>
+        + addItem(item: PantryItem): void
+        + updateItem(item: PantryItem): void
+        + removeItem(itemId: String): void
+        + consume(name: String, qty: double, unit: String): double
+        + findByName(name: String): PantryItem
+        + getExpiringSoon(days: int): List<PantryItem>
+        + attach(o: PantryObserver): void
+        + detach(o: PantryObserver): void
+        + notifyObservers(event: PantryEvent): void
+    }
+    interface PantryObserver <<Observer>> {
+        + onPantryChanged(event: PantryEvent): void
+    }
+    class PantryItem {
+        - id: String
+        - ingredientName: String
+        - quantity: double
+        - unit: String
+        - expiryDate: Date
+        - location: String
+    }
+    class PantryEvent {
+        - type: String
+        - item: PantryItem
+    }
+    class LeftoverTracker {
+        - portions: List<LeftoverPortion>
+        + recordLeftovers(slot: MealSlot, portions: int): void
+        + getAvailable(): List<LeftoverPortion>
+    }
+    class LeftoverPortion {
+        - recipeId: String
+        - portions: int
+        - cookedDate: Date
+        - expiryDate: Date
+    }
+}
+PantryInventory "1" *--> "0..*" PantryItem
+PantryInventory "1" o--> "0..*" PantryObserver : notifies
+PantryInventory ..> PantryEvent
+MealPlannerGUI ..|> PantryObserver
+ShoppingListManager ..|> PantryObserver
+LeftoverTracker "1" *--> "0..*" LeftoverPortion
+
+' ================= COMPOSITE: MEAL PLAN =================
+package "Domain: Meal Plan (Composite)" {
+    interface PlanComponent <<Component>> {
+        + getName(): String
+        + getTotalNutrition(): NutritionInfo
+        + getRequiredIngredients(): List<RecipeIngredient>
+        + getMealCount(): int
+    }
+    class MealSlot <<Leaf>> {
+        - slotId: String
+        - date: Date
+        - mealType: String
+        - recipe: Recipe
+        - servings: int
+        - status: String
+        - leftoverSourceSlotId: String
+        + setRecipe(r: Recipe): void
+        + setServings(n: int): void
+        + setStatus(s: String): void
+    }
+    class DayPlan <<Composite>> {
+        - date: Date
+        - slots: List<PlanComponent>
+        + addSlot(slot: MealSlot): void
+        + removeSlot(slotId: String): void
+    }
+    class MealPlan <<Composite>> {
+        - planId: String
+        - startDate: Date
+        - days: List<PlanComponent>
+        + addDay(day: DayPlan): void
+        + getDay(date: Date): DayPlan
+        + findSlot(slotId: String): MealSlot
+        + getAllSlots(): List<MealSlot>
+    }
+}
+MealSlot ..|> PlanComponent
+DayPlan ..|> PlanComponent
+MealPlan ..|> PlanComponent
+MealPlan "1" *--> "1..7" DayPlan
+DayPlan "1" *--> "0..*" MealSlot
+MealSlot "0..*" --> "1" Recipe : references
+
+' ================= COMMAND =================
+package "Command Layer" {
+    interface PlanCommand <<Command>> {
+        + execute(): void
+        + undo(): void
+        + describe(): String
+    }
+    class SwapRecipeCommand {
+        - plan: MealPlan
+        - slotId: String
+        - newRecipe: Recipe
+        - oldRecipe: Recipe
+    }
+    class AddMealCommand {
+        - plan: MealPlan
+        - date: Date
+        - slot: MealSlot
+    }
+    class RemoveMealCommand {
+        - plan: MealPlan
+        - slotId: String
+        - removedSlot: MealSlot
+    }
+    class ScaleServingsCommand {
+        - plan: MealPlan
+        - slotId: String
+        - newServings: int
+        - oldServings: int
+    }
+    class CommandHistory <<Invoker>> {
+        - undoStack: Stack<PlanCommand>
+        - redoStack: Stack<PlanCommand>
+        + executeCommand(cmd: PlanCommand): void
+        + undo(): void
+        + redo(): void
+    }
+}
+SwapRecipeCommand ..|> PlanCommand
+AddMealCommand ..|> PlanCommand
+RemoveMealCommand ..|> PlanCommand
+ScaleServingsCommand ..|> PlanCommand
+CommandHistory "1" o--> "0..*" PlanCommand
+SwapRecipeCommand --> MealPlan : receiver
+AddMealCommand --> MealPlan : receiver
+RemoveMealCommand --> MealPlan : receiver
+ScaleServingsCommand --> MealPlan : receiver
+MealPlannerFacade --> CommandHistory : executes edits via
+PlanEditParser ..> PlanCommand : creates
+
+' ================= SERVICES =================
+package "Services" {
+    class NutritionService {
+        - provider: NutritionProvider
+        + enrichRecipe(recipe: Recipe): Recipe
+        + summarize(component: PlanComponent): NutritionInfo
+        + buildReport(plan: MealPlan, date: Date, profile: UserProfile): NutritionReport
+    }
+    class NutritionReport {
+        - totals: NutritionInfo
+        - targets: NutritionInfo
+        - deltas: Map<String, Double>
+        - warnings: List<String>
+        - incomplete: boolean
+    }
+    class ShoppingListManager {
+        - pantry: PantryInventory
+        - converter: UnitConverter
+        - currentList: ShoppingList
+        + generate(plan: MealPlan): ShoppingList
+        + consolidate(items: List<RecipeIngredient>): List<ShoppingItem>
+        + markPurchased(itemIds: List<String>): void
+        + onPantryChanged(event: PantryEvent): void
+    }
+    class ShoppingList {
+        - listId: String
+        - planId: String
+        - items: List<ShoppingItem>
+        + getItemsByCategory(): Map<String, List<ShoppingItem>>
+    }
+    class ShoppingItem {
+        - itemId: String
+        - name: String
+        - quantity: double
+        - unit: String
+        - category: String
+        - purchased: boolean
+    }
+    class UnitConverter {
+        + convert(qty: double, fromUnit: String, toUnit: String): double
+        + areCompatible(a: String, b: String): boolean
+    }
+}
+NutritionService ..> NutritionReport
+ShoppingListManager "1" *--> "0..1" ShoppingList
+ShoppingList "1" *--> "0..*" ShoppingItem
+ShoppingListManager --> PantryInventory
+ShoppingListManager --> UnitConverter
+MealPlannerFacade --> ShoppingListManager
+MealPlannerFacade --> NutritionService
+MealPlannerFacade --> LeftoverTracker
+MealPlannerFacade --> PantryInventory
+MealPlannerFacade "1" o--> "0..1" MealPlan : currentPlan
+
+' ================= PERSISTENCE =================
+package "Persistence" {
+    interface Repository<T> {
+        + save(entity: T): void
+        + findById(id: String): T
+        + findAll(): List<T>
+        + delete(id: String): void
+    }
+    class JsonFileRepository<T> {
+        - filePath: String
+        + save(entity: T): void
+        + findById(id: String): T
+        + findAll(): List<T>
+        + delete(id: String): void
+    }
+}
+JsonFileRepository ..|> Repository
+RecipeRepository --|> JsonFileRepository
+MealPlannerFacade --> Repository : profile/plan storage
+@enduml

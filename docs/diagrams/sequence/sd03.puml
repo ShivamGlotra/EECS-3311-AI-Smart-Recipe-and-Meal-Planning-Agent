@@ -1,0 +1,50 @@
+@startuml
+actor "Home Cook" as U
+participant MealPlannerGUI as GUI
+participant MealPlannerFacade as F
+participant MealPlanningAgent as A
+participant RecipeGenerationWorkflow as W
+participant LLMProvider as LLM
+participant ToolManager as TM
+participant LLMRecipeFactory as RF
+participant ConstraintValidator as CV
+participant NutritionService as NS
+participant NutritionProvider as NP
+participant RecipeRepository as RR
+
+U -> GUI: "nut-free lentil soup"
+GUI -> F: generateRecipe(prompt)
+F -> A: handle(request[GENERATE_RECIPE])
+A -> W: execute(request)
+W -> LLM: complete(extraction prompt)
+LLM --> W: PlanningRequirements
+W -> TM: execute("pantry_query", input)
+TM --> W: pantry items
+loop attempt <= maxRetries
+    W -> LLM: complete(buildRecipePrompt)
+    LLM --> W: LLMResponse (JSON)
+    W -> RF: createRecipe(raw)
+    RF --> W: Recipe
+    W -> CV: validateRecipe(recipe, profile)
+    CV --> W: ValidationResult
+    alt valid
+        W -> NS: enrichRecipe(recipe)
+        NS -> NP: lookup(ingredient, qty, unit)
+        NP --> NS: NutritionInfo
+        NS --> W: Recipe (with nutrition)
+        W -> RR: save(recipe)
+    else violation (e.g., allergen)
+        W -> W: add violations to next prompt
+    end
+end
+alt success
+    W --> A: AgentResponse(recipe)
+    A --> F: response
+    F --> GUI: recipe
+    GUI -> GUI: showRecipes([recipe])
+else retries exhausted
+    W --> A: AgentResponse(error)
+    F --> GUI: error
+    GUI -> GUI: showError(msg)
+end
+@enduml

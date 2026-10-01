@@ -1,0 +1,70 @@
+@startuml
+actor "Home Cook" as U
+participant MealPlannerGUI as GUI
+participant MealPlannerFacade as F
+participant "planRepo:Repository" as PR
+participant NutritionService as NS
+participant ShoppingListManager as SLM
+participant MealPlan as MP
+participant DayPlan as DP
+participant MealSlot as MS
+participant NutritionProvider as NP
+participant UnitConverter as UC
+participant PantryInventory as PI
+
+== F09: Nutrition report ==
+U -> GUI: open Nutrition tab (day/week)
+GUI -> F: getNutritionReport(planId, date)
+F -> PR: findById(planId)
+PR --> F: plan
+F -> NS: buildReport(plan, date, profile)
+alt date given
+    NS -> MP: getDay(date)
+    MP --> NS: DayPlan
+    NS -> DP: getTotalNutrition()
+else whole week
+    NS -> MP: getTotalNutrition()
+end
+loop each slot (composite recursion)
+    DP -> MS: getTotalNutrition()
+    MS --> DP: NutritionInfo (recipe x servings)
+end
+opt a recipe lacks nutrition
+    NS -> NP: lookup(ingredient, qty, unit)
+    NP --> NS: NutritionInfo / failure
+end
+NS --> F: NutritionReport (totals, deltas, warnings, incomplete?)
+F --> GUI: report
+GUI -> GUI: showNutritionReport(report)
+
+== F11: Shopping list with consolidation ==
+U -> GUI: click Generate Shopping List
+GUI -> F: generateShoppingList(planId)
+F -> PR: findById(planId)
+PR --> F: plan
+alt plan empty
+    F --> GUI: message
+    GUI -> GUI: showMessage("Plan is empty")
+else plan has meals
+    F -> SLM: generate(plan)
+    SLM -> MP: getRequiredIngredients()
+    MP --> SLM: List<RecipeIngredient>
+    SLM -> SLM: consolidate(items)
+    loop each duplicate group
+        SLM -> UC: areCompatible(a, b)
+        alt compatible
+            SLM -> UC: convert(qty, from, to)
+        else incompatible
+            SLM -> SLM: keep separate lines
+        end
+    end
+    loop each consolidated item
+        SLM -> PI: findByName(name)
+        PI --> SLM: PantryItem or null
+        SLM -> SLM: subtract available stock
+    end
+    SLM --> F: ShoppingList
+    F --> GUI: list
+    GUI -> GUI: showShoppingList(list)
+end
+@enduml

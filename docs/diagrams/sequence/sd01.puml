@@ -1,0 +1,80 @@
+@startuml
+actor "Home Cook" as U
+participant MealPlannerGUI as GUI
+participant MealPlannerFacade as F
+participant UserProfile as P
+participant "profileRepo:Repository" as PR
+participant PantryInventory as PI
+participant "pantryRepo:Repository" as PIR
+participant ShoppingListManager as SLM
+participant MealPlan as MP
+participant MealSlot as MS
+participant LeftoverTracker as LT
+participant "planRepo:Repository" as PLR
+
+== F01: Save profile ==
+U -> GUI: fill form, click Save
+GUI -> F: saveProfile(profile)
+F -> P: validate()
+P --> F: errors
+alt errors not empty
+    F --> GUI: error
+    GUI -> GUI: showError(msg)
+else valid
+    F -> PR: save(profile)
+    F --> GUI: ok
+    GUI -> GUI: showMessage("Profile saved")
+end
+
+== F02: Add pantry item (Observer) ==
+U -> GUI: add item
+GUI -> F: addPantryItem(item)
+F -> PI: addItem(item)
+alt invalid quantity/unit
+    PI --> F: error
+    F --> GUI: error
+    GUI -> GUI: showError(msg)
+else valid
+    PI -> PIR: save(item)
+    PI -> PI: notifyObservers(event)
+    PI -> SLM: onPantryChanged(event)
+    PI -> GUI: onPantryChanged(event)
+    GUI -> GUI: showPantry(items)
+end
+
+== F02: Mark meal cooked ==
+U -> GUI: Mark as cooked (+ leftover portions)
+GUI -> F: markMealCooked(slotId, leftoverPortions)
+F -> MP: findSlot(slotId)
+MP --> F: MealSlot
+alt already cooked
+    F --> GUI: message
+    GUI -> GUI: showMessage("Already cooked")
+else planned
+    F -> MS: setStatus(COOKED)
+    loop each required ingredient
+        F -> PI: consume(name, qty, unit)
+        PI -> PI: notifyObservers(event)
+        PI -> SLM: onPantryChanged(event)
+        PI -> GUI: onPantryChanged(event)
+        PI --> F: shortfall
+    end
+    opt leftoverPortions > 0
+        F -> LT: recordLeftovers(slot, portions)
+    end
+    F -> PLR: save(plan)
+    F --> GUI: shortfall warnings (if any)
+    GUI -> GUI: showPantry(items)
+end
+
+== F02: Mark items purchased ==
+U -> GUI: tick items > Mark purchased
+GUI -> F: markItemsPurchased(itemIds)
+F -> SLM: markPurchased(itemIds)
+loop each item
+    SLM -> PI: addItem(pantryItem)
+    PI -> PI: notifyObservers(event)
+end
+F --> GUI: updated list
+GUI -> GUI: showShoppingList(list)
+@enduml

@@ -1,0 +1,113 @@
+@startuml
+actor "Home Cook" as U
+participant MealPlannerGUI as GUI
+participant MealPlannerFacade as F
+participant MealPlanningAgent as A
+participant AgentMemory as M
+participant PlanModificationWorkflow as W
+participant SubstitutionWorkflow as SW
+participant LLMProvider as LLM
+participant ToolManager as TM
+participant ConstraintValidator as CV
+participant PlanEditParser as PEP
+participant Recipe as R
+participant UnitConverter as UC
+participant CommandHistory as CH
+participant PlanCommand as C
+participant MealPlan as MP
+participant "planRepo:Repository" as PR
+
+== F06: Natural-language modification ==
+U -> GUI: "Swap Tuesday dinner for something vegetarian"
+GUI -> F: modifyPlan(instruction)
+F -> A: handle(request[MODIFY_PLAN])
+A -> M: getRecentContext(n)
+A -> W: execute(request)
+W -> LLM: complete(buildEditPrompt)
+LLM --> W: edit JSON
+W -> PEP: toCommands(editJson, plan)
+PEP --> W: List<PlanCommand>
+W -> CV: validateRecipe(newRecipe, profile)
+CV --> W: ValidationResult
+alt ambiguous target
+    W --> A: clarificationQuestions
+    F --> GUI: askClarification(questions)
+else violation
+    W --> A: AgentResponse(error + reason)
+    F --> GUI: showError(reason)
+else valid
+    W --> A: AgentResponse(commands)
+    A -> M: remember(turn)
+    A --> F: response
+    loop each command
+        F -> CH: executeCommand(cmd)
+        CH -> C: execute()
+        C -> MP: update slot(s)
+    end
+    F -> PR: save(plan)
+    F --> GUI: updated plan
+    GUI -> GUI: showMealPlan(plan)
+end
+
+== Undo ==
+U -> GUI: click Undo
+GUI -> F: undoLastChange()
+F -> CH: undo()
+CH -> C: undo()
+C -> MP: restore previous state
+F -> PR: save(plan)
+F --> GUI: plan
+GUI -> GUI: showMealPlan(plan)
+
+== F07: Ingredient substitution ==
+U -> GUI: right-click ingredient > Substitute
+GUI -> F: substituteIngredient(recipeId, ingredient, reason)
+F -> A: handle(request[SUBSTITUTE])
+A -> SW: execute(request)
+SW -> TM: execute("pantry_query", input)
+TM --> SW: pantry items
+SW -> LLM: complete(buildSubstitutionPrompt)
+LLM --> SW: substitute JSON
+SW -> CV: validateRecipe(recipe with substitute, profile)
+CV --> SW: ValidationResult
+SW -> TM: execute("nutrition_lookup", input)
+TM --> SW: nutritionDelta
+alt no valid substitute
+    SW --> A: AgentResponse(none found)
+    F --> GUI: showMessage("No valid substitute")
+else found
+    SW --> A: AgentResponse(SubstitutionResult)
+    A --> F: result
+    F --> GUI: result (with nutrition delta)
+    U -> GUI: confirm
+    GUI -> F: applySubstitution(slotId, result)
+    F -> R: applySubstitution(result)
+    R --> F: modified Recipe
+    F -> CH: executeCommand(SwapRecipeCommand)
+    CH -> C: execute()
+    F --> GUI: updated plan
+    GUI -> GUI: showMealPlan(plan)
+end
+
+== F08: Serving-size adjustment ==
+U -> GUI: change servings spinner (recipe browser)
+GUI -> F: scaleRecipe(recipeId, servings)
+alt servings <= 0
+    F --> GUI: error
+    GUI -> GUI: showError(msg)
+else valid
+    F -> R: scaleTo(servings)
+    R -> UC: convert(qty, fromUnit, toUnit)
+    R --> F: scaled Recipe
+    F --> GUI: scaled Recipe
+    GUI -> GUI: showRecipes([scaled])
+end
+U -> GUI: change servings on calendar slot
+GUI -> F: scaleSlotServings(slotId, servings)
+F -> CH: executeCommand(ScaleServingsCommand)
+CH -> C: execute()
+C -> MP: findSlot(slotId).setServings(n)
+F -> PR: save(plan)
+F --> GUI: plan
+GUI -> GUI: showMealPlan(plan)
+@enduml
