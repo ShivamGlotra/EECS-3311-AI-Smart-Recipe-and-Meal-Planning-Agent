@@ -193,7 +193,7 @@ Classification key: **D** = deterministic, **AI** = AI-based, **H** = hybrid (de
 # 3. UML Class Diagram
 
 - [ UML Class Diagram](docs/diagrams/class/class-diagram.puml)
-  ![UML use ](docs/diagrams/class/class-diagram.svg)
+  ![UML use ](docs/diagrams/class/class-diagram.png)
 
 ---
 
