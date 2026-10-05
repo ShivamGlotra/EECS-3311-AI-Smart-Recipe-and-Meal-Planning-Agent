@@ -1,3 +1,9 @@
+> **Implementation (Stage 2).** The design below is implemented in Java under `src/`.
+> Build and test with `mvn test`. Run with `mvn package` and then `java -jar target/smartplate-1.0.0.jar`
+> (add `--cli` for the command line). It runs offline with a mock AI; set `ANTHROPIC_API_KEY` to use Claude.
+> - Code explanation: [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)
+> - Where AI helped (disclosure for the instructor): [docs/AI_USAGE.md](docs/AI_USAGE.md)
+
 EECS3311 Fall 2026 — Stage 1 Project Design Report
 SmartPlate: AI Smart Recipe and Meal Planning Agent
 
