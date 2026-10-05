@@ -1,552 +1,773 @@
-# EECS3311 Fall 2026 — Stage 1 Project Design Report
+EECS3311 Fall 2026 — Stage 1 Project Design Report
+SmartPlate: AI Smart Recipe and Meal Planning Agent
+
+1. Project Overview
+   1.1 Problem and Motivation
+   Planning meals for a week means balancing dietary preferences, allergies, disliked ingredients, pantry contents, cooking time, serving sizes, nutrition, and grocery needs at the same time. Ordinary recipe apps offer search and filters, but they do not reason across all of these constraints. Users must search for recipes, assemble a weekly plan, check each meal against their restrictions, work out the ingredients, and write a shopping list by hand.
+
+SmartPlate is an AI agent that turns a natural-language request ("Plan dinners for this week, use some of my pantry items, avoid mushrooms, keep meals under 30 minutes") into a validated weekly meal plan. It lets the user modify the plan conversationally and undo changes. Deterministic Java components handle validation, nutrition, serving scaling, substitutions, pantry management, and shopping lists, so the system is more than a single LLM API call.
+
+1.2 Target Users
+Students and young professionals who want simple weekly meal planning.
+Individuals with dietary preferences, restrictions, or allergies.
+Users who want to cook with ingredients they already have.
+Users who want to reduce grocery waste and repeated shopping trips.
+1.3 Agent Description: What the Agent Can Do
+Understand natural-language meal-planning requests.
+Respect the user's preferences, allergies, dislikes, and time limit.
+Take the pantry into account.
+Recommend recipes from the recipe repository.
+Build a weekly meal plan.
+Modify the plan from a natural-language request, and undo the change.
+Select recipes with a configurable strategy (pantry-first or fastest).
+Validate every AI recommendation and plan before showing it.
+Adjust servings, substitute ingredients, calculate nutrition, and generate a shopping list.
+Scope assumptions (kept deliberately simple):
+
+A plan has one meal per day (dinner), for 5 to 7 days.
+The AI selects from existing recipes in RecipeRepository. It does not invent recipes.
+Supported units are g, kg, ml, l and pcs only.
+Ingredient substitutions come from a predefined list; the AI does not invent substitutions.
+1.4 Why an AI Agent Is Appropriate
+Meal planning is a constraint-based decision problem. A single prompt to an LLM cannot be trusted with allergies, pantry contents, or exact quantities. The agent:
+
+Interprets the user's request.
+Retrieves recipes from the repository.
+Considers the user's profile and pantry.
+Applies a recipe-selection strategy to shortlist candidates.
+Asks the AI model to choose among the candidates.
+Validates the choice with deterministic code (ConstraintValidator).
+If violations are found, revises once using the violation messages; otherwise reports failure.
+Returns a validated result, and can later modify it on request.
+The LLM proposes; deterministic code decides. An allergen violation is never shown as a valid plan.
+
+1.5 AI / LLM Model
+The system is designed around the AIModel abstraction and is not tied to one provider. The agent calls AIModel.generate(prompt). AIAdapter translates this call into the request expected by the provider-specific AIClient. The provider, model name, and API key are read from configuration (the key from an environment variable), so the provider can change without touching MealPlanningAgent.
+
+1.6 How the AI Interacts with the Rest of the System
+The GUI and CLI never call the LLM directly. The flow is:
+
+GUI/CLI → SmartRecipeFacade → MealPlanningAgent → (RecipeRepository, RecipeSelectionStrategy, AIModel) → ConstraintValidator → domain objects → result
+
+MealPlanningAgent
+|
+AIModel
+/ \
+AIAdapter MockAIModel
+|
+AIClient
+|
+External LLM
+A MockAIModel implements the same AIModel interface so the system can run and be tested without an external LLM. Normal development and testing therefore need no API calls.
+
+1.7 Overall Architecture
+The system follows a layered architecture.
+
++--------------------------------------------------+
+| Presentation Layer |
+| MealPlannerGUI MealPlannerCLI |
++------------------------|-------------------------+
+v
++--------------------------------------------------+
+| Application Layer |
+| SmartRecipeFacade |
++--------------------------------------------------+
+| | |
+v v v
+MealPlanningAgent Services CommandHistory
+|
++--> RecipeSelectionStrategy
++--> ConstraintValidator
++--> AIModel (AIAdapter -> AIClient, or MockAIModel)
+
++--------------------------------------------------+
+| Domain Layer |
+| Recipe | MealPlan | PlannedMeal | Pantry |
+| PantryItem | UserProfile | Ingredient |
+| RecipeIngredient | ShoppingList | ShoppingItem |
+| NutritionInfo | Substitution |
++--------------------------------------------------+
+
++--------------------------------------------------+
+| Data Layer |
+| RecipeRepository |
++--------------------------------------------------+
+MealPlannerGUI and MealPlannerCLI are the presentation classes in the class diagram. Both call only SmartRecipeFacade.
+SmartRecipeFacade is the single entry point for every feature.
+MealPlanningAgent does the AI-assisted work (recommend, plan, edit).
+Services (NutritionService, ServingScaler, SubstitutionService, ShoppingListService) do the deterministic work. 2. Detailed Feature Specifications
+The project has 10 features.
+
+ID Feature Type
+F01 Preference Profile Management Deterministic
+F02 Pantry Inventory Management Deterministic
+F03 Recipe Search Deterministic
+F04 AI Recipe Recommendation Hybrid
+F05 AI Weekly Meal Planning Hybrid
+F06 Meal Plan Editing and Undo Hybrid
+F07 Serving-Size Adjustment Deterministic
+F08 Ingredient Substitution Deterministic
+F09 Nutrition Information Deterministic
+F10 Shopping List Generation Deterministic
+Hybrid means the AI model makes a choice and deterministic code validates it. Deterministic means no AI is involved.
 
-## SmartPlate: AI Smart Recipe and Meal Planning Agent
+Note for all hybrid features (F04, F05, F06): the AI selects from existing recipes in RecipeRepository; it does not invent recipes. A recipe name or id that is not in the repository is rejected.
 
-# 1. Project Overview
+F01 — Preference Profile Management
+Description: Lets the user configure dietary preferences, allergies, disliked ingredients, maximum cooking time, and default serving size.
 
-## 1.1 Problem and Motivation
+User Interaction: The user opens the preferences section in the GUI or uses the CLI profile command.
 
-Deciding "what's for dinner?" every day is a surprisingly hard, multi-constraint problem. A household must balance dietary restrictions and allergies, nutrition goals, personal taste, cooking time, the food already in the pantry (some of it close to expiring), and the cost and effort of grocery shopping. Existing recipe apps are static catalogs: they do not reason about the user's pantry, they cannot restructure a whole week when plans change, and they do not connect meal plans to shopping lists. The result is food waste, repeated grocery trips, and meals that ignore dietary needs.
+Input: Dietary preferences, allergies, disliked ingredients, maximum cooking time, default servings.
 
-**SmartPlate** is an AI agent that turns natural-language requests ("Plan 5 vegetarian dinners under 30 minutes, use up my spinach and rice") into a validated weekly meal plan, adjusts it conversationally, and keeps the pantry and shopping list synchronized with the plan.
+Output: Updated UserProfile.
 
-## 1.2 Target Users
+AI Involvement: Deterministic.
 
-- Busy students and young professionals who cook for themselves and want low-waste, low-effort planning.
-- Families who need to satisfy several dietary constraints at once (e.g., a nut allergy and a vegetarian member).
-- Health-conscious users tracking calories/macros.
-- Anyone who wants to cook with what they already have.
+Expected Workflow:
 
-## 1.3 What the Agent Can Do
+The user enters or modifies preferences.
+SmartRecipeFacade.setupProfile(profile) receives them.
+UserProfile.validate() returns a list of problems.
+If there are no problems, the profile is stored and returned. If there are problems, the previous valid profile is kept.
+Later recommendations and plans use the updated profile.
+Error/Alternative Cases: Servings less than 1; cooking time less than 1; duplicate or malformed entries. The system rejects invalid input and keeps the previous valid profile.
 
-- Maintain a profile of dietary constraints, allergies, dislikes, and nutrition targets.
-- Track pantry inventory (quantities, expiry) and react to changes.
-- Search recipes by available ingredients and recommend ranked, explained options.
-- Generate brand-new recipes tailored to constraints and pantry contents.
-- Build a multi-day meal plan through a multi-step workflow (understand → gather context → plan → validate → refine).
-- Modify the plan from natural-language instructions, with undo/redo.
-- Suggest ingredient substitutions, scale servings, and summarize nutrition.
-- Use leftovers and soon-to-expire items, generate a consolidated shopping list, and update the pantry after cooking/shopping.
+F02 — Pantry Inventory Management
+Description: Lets the user add, update, remove, and view the ingredients currently in the pantry.
 
-## 1.4 Why an AI Agent Is Appropriate
+User Interaction: The user opens the pantry screen or uses the CLI pantry commands.
 
-A single LLM call cannot do this reliably because the task needs **grounding, tool use, and verification**:
+Input: Ingredient, quantity, unit, and an action (ADD, UPDATE or REMOVE).
 
-1. **Reasoning over many constraints at once** (allergies, calories, time, pantry) — LLMs handle fuzzy, natural-language constraints well.
-2. **Multi-step execution** — the agent extracts requirements, asks for missing info, queries the pantry and recipe database, drafts a plan, validates it, and retries on violations.
-3. **Tool use** — pantry data, recipe search, nutrition lookup, and unit conversion come from deterministic tools rather than the model's memory, which prevents hallucinated inventory or nutrition values.
-4. **Memory** — conversation history lets users say "swap _that_ for something cheaper".
-5. **Safety guardrails** — the LLM proposes; deterministic code (`ConstraintValidator`) decides. An allergen violation is never shown to the user as a valid plan.
+Output: Updated Pantry.
 
-## 1.5 AI / LLM Model(s)
+AI Involvement: Deterministic.
 
-- **Primary model:** a hosted LLM (Anthropic Claude, Sonnet-class) accessed over an HTTP API through the `LLMProvider` interface. The model name and API key live in configuration, so the model can be swapped without touching agent code.
-- **Test/offline model:** `MockLLMAdapter` returns canned JSON so the system can be unit-tested and demoed without network access.
-- The LLM is prompted to return **structured JSON** (validated against a schema) for requirements extraction, plans, recipes, edits, and substitutions.
+Expected Workflow:
 
-## 1.6 How the AI Interacts with the Rest of the System
+The user selects a pantry operation.
+SmartRecipeFacade.managePantry(action, item) processes it (action is ADD, UPDATE or REMOVE).
+Pantry adds, updates, or removes the PantryItem.
+The updated pantry is displayed.
+Error/Alternative Cases: Item does not exist when updating or removing; quantity is zero or negative; unit is not one of g, kg, ml, l, pcs.
 
-The LLM is never called directly from the GUI/CLI. The flow is:
+F03 — Recipe Search
+Description: Searches the recipe repository for recipes matching a name, ingredient, or search term.
 
-`GUI/CLI → MealPlannerFacade → MealPlanningAgent → AgentWorkflow → (ToolManager → Tools) + LLMProvider → ConstraintValidator → Domain objects → View`
+User Interaction: The user types a query in the search box (GUI) or uses the CLI search command.
 
-- **Tools** (`RecipeSearchTool`, `PantryQueryTool`, `NutritionLookupTool`, `UnitConversionTool`) give the agent factual, deterministic data.
-- **LLMProvider** performs language understanding and generation.
-- **ConstraintValidator** and domain classes enforce correctness.
-- **AgentMemory** keeps conversational context across turns.
+Input: Search query.
 
-## 1.7 Overall Architecture
+Output: List of matching Recipe objects.
 
-Layered architecture with MVC at the presentation boundary:
+AI Involvement: Deterministic.
 
-| Layer                           | Components                                                                                                                                                |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Presentation (View)             | `MealPlannerGUI` (weekly calendar, recipe browser, pantry, shopping list, AI chat), `MealPlannerCLI` — both implement `MealPlannerView`                   |
-| Application (Controller/Facade) | `MealPlannerFacade` — single entry point used by both GUI and CLI                                                                                         |
-| Agent & Reasoning Core          | `MealPlanningAgent`, `AgentWorkflow` (+ 6 concrete workflows), `AgentMemory`, `PromptBuilder`, `ConstraintValidator`, `RecipeRanker` + scoring strategies |
-| Tool & Adapter Layer            | `ToolManager`, `AgentTool` implementations, `LLMProvider` and `NutritionProvider` adapters                                                                |
-| Domain (Model)                  | `UserProfile`, `Recipe`, `PantryInventory`, `MealPlan` composite, `ShoppingList`, `NutritionInfo`, etc.                                                   |
-| Services                        | `NutritionService`, `ShoppingListManager`, `LeftoverTracker`, `UnitConverter`                                                                             |
-| Persistence                     | `Repository<T>` + `JsonFileRepository<T>`                                                                                                                 |
+Expected Workflow:
 
-**GUI screens:** Weekly Meal Calendar, Recipe Browser, Pantry, Shopping List, Profile/Settings, and an AI Chat pane.
-**CLI:** the same operations through commands such as `profile set`, `pantry add`, `recipes search`, `plan week "<prompt>"`, `plan edit "<instruction>"`, `plan undo`, `shop generate`, `cook <slot>`, `chat "<message>"`. Both front ends call only `MealPlannerFacade`, so every feature is available in both.
+The user submits a query.
+SmartRecipeFacade.searchRecipes(query) is called.
+RecipeRepository.search(query) searches the recipe collection.
+Matching recipes are returned and displayed.
+Error/Alternative Cases: Empty query; no matching recipes.
 
----
+F04 — AI Recipe Recommendation
+Description: Recommends recipes that fit the user's preferences, pantry contents, and natural-language request.
 
-# 2. Detailed Feature Specifications
+User Interaction: The user types a request such as "quick vegetarian dinners using rice" in the AI assistant area (GUI) or CLI.
 
-Classification key: **D** = deterministic, **AI** = AI-based, **H** = hybrid (deterministic tools + LLM reasoning, with deterministic validation).
+Input: Natural-language request, UserProfile, Pantry, recipes in the repository.
 
-### F01 — Preference Profile & Dietary Constraint Configuration (D)
+Output: A list of recommended Recipe objects.
 
-- **Description:** Stores diet types (vegetarian, vegan, gluten-free, halal…), allergies, disliked ingredients, favorite cuisines, calorie/protein targets, default servings, and max cooking time. Allergies are _hard_ constraints; dislikes are _soft_.
-- **User Interaction:** Profile screen with form fields/checkboxes and a Save button (CLI: `profile set …`).
-- **Input:** Form values.
-- **Output:** Persisted `UserProfile`; confirmation message.
-- **AI Involvement:** None (deterministic). The saved profile is consumed by all AI workflows.
-- **Workflow:** GUI collects data → `saveProfile()` → `UserProfile.validate()` → `Repository.save()` → confirmation.
-- **Error/Alternative:** Invalid values (negative calories, empty name) → field-level error; conflicting constraints (e.g., vegan + "must include chicken") → warning and rejection; storage failure → error and profile unchanged.
-
-### F02 — Pantry Inventory Management & Automatic Updates (D)
+AI Involvement: Hybrid. The strategy shortlists candidates, the AI model chooses among them, and ConstraintValidator checks the result.
 
-- **Description:** Add, edit, and remove pantry items with quantity, unit, location, and expiry date; highlights items expiring soon. The pantry also updates itself: marking a meal as cooked deducts its ingredients (and records leftover portions), and marking shopping-list items as purchased adds them.
-- **User Interaction:** Pantry panel table with Add/Edit/Delete; "Mark as cooked" on a calendar slot; "Mark purchased" on shopping items (CLI: `pantry add|edit|rm|list`, `cook <slot>`, `shop bought <items>`).
-- **Input:** Ingredient name, quantity, unit, expiry date; or a slot id (+ leftover portions); or purchased item ids.
-- **Output:** Updated inventory; observers (shopping list, GUI) are notified; slot status updated.
-- **AI Involvement:** None.
-- **Workflow:** _Manual edit:_ GUI → `addPantryItem()/updatePantryItem()/removePantryItem()` → `PantryInventory` mutates, saves, and calls `notifyObservers()`. _Cooked:_ `markMealCooked()` → slot set to COOKED → `PantryInventory.consume()` per scaled ingredient → leftovers recorded → observers notified. _Purchased:_ `markItemsPurchased()` → `ShoppingListManager.markPurchased()` → `PantryInventory.addItem()`.
-- **Error/Alternative:** Negative quantity or unknown unit → rejected; duplicate ingredient → merged into the existing item (with unit conversion) after confirmation; past expiry date → accepted but flagged "expired"; insufficient stock when cooking → deduct what exists and report the shortfall; slot already cooked → ignored with a message.
+Expected Workflow:
 
-### F03 — Recipe Search & AI Recommendation (H)
-
-- **Description:** Finds recipes that can be made with given ingredients (with diet, time, and cuisine filters and a "% of ingredients on hand" indicator), and recommends ranked recipes for natural-language requests such as "quick high-protein lunch", with an explanation for each.
-- **User Interaction:** Search bar, filters, and a "Use my pantry" toggle in the Recipe Browser; a Recommend button or the chat pane.
-- **Input:** Ingredient list and filters, or a free-text request, plus profile and pantry.
-- **Output:** Matching recipes with pantry-match percentage, or a ranked `RecipeRecommendation` list with reasons.
-- **AI Involvement:** Hybrid — searching and scoring are deterministic (`RecipeRanker` with scoring strategies); the LLM interprets the request and writes the explanations.
-- **Workflow:** _Search:_ `searchByIngredients()` → `RecipeRepository` → filter by profile constraints → show. _Recommend:_ extract requirements (LLM) → `PantryQueryTool` + `RecipeSearchTool` (calls `RecipeRanker`) → LLM writes reasons → response.
-- **Error/Alternative:** Empty search input → prompt for at least one ingredient; no results or no recipe passes hard constraints → suggest relaxing filters or generating a recipe (F04); ambiguous request → clarification questions; LLM failure → ranked list with generic reasons.
-
-### F04 — AI Recipe Generation (H)
-
-- **Description:** Creates a new recipe from a prompt ("a nut-free soup using lentils and carrots").
-- **User Interaction:** "Generate Recipe" dialog or chat message.
-- **Input:** Free-text prompt + profile + pantry.
-- **Output:** A complete `Recipe` (ingredients, steps, times, nutrition) saved to the recipe library.
-- **AI Involvement:** Hybrid — LLM drafts; `LLMRecipeFactory` normalizes; `ConstraintValidator` verifies; nutrition is computed by `NutritionService`.
-- **Workflow:** Extract requirements → get pantry context → LLM drafts JSON → `LLMRecipeFactory.createRecipe()` → validate → enrich nutrition → save.
-- **Error/Alternative:** Malformed JSON → retry (max 2); allergen detected → regenerate with violation feedback; still failing → show error and offer to relax constraints.
-
-### F05 — Weekly Meal Planning (H)
-
-- **Description:** Produces a multi-day plan (e.g., 7 days × breakfast/lunch/dinner) that respects constraints and targets and prefers pantry/expiring ingredients and variety.
-- **User Interaction:** "Generate Week" button with options (days, meals/day, servings) or chat; result appears in the Weekly Meal Calendar.
-- **Input:** Prompt/options + profile + pantry + recipe library.
-- **Output:** A `MealPlan` composite (days → meal slots).
-- **AI Involvement:** Hybrid multi-step agent workflow with validation and retry.
-- **Workflow:** Extract requirements → ask for missing info if needed → gather pantry/recipes → LLM plans → build composite → validate → retry if violations → compute nutrition → save → display.
-- **Error/Alternative:** Missing info → clarification dialog; too few valid recipes → LLM-generated recipes via F04 logic; validation fails after retries → partial plan with flagged slots; LLM unavailable → error with option to build manually from the recipe browser.
-
-### F06 — Natural-Language Meal-Plan Modification (H)
-
-- **Description:** Edits the plan from instructions such as "Swap Tuesday's dinner for something vegetarian" or "Remove all fish meals". Supports undo/redo.
-- **User Interaction:** Chat pane, plus Undo/Redo buttons.
-- **Input:** Instruction text + current plan.
-- **Output:** Updated plan; list of applied changes.
-- **AI Involvement:** Hybrid — the LLM translates the instruction into structured edits; the system executes them as undoable commands.
-- **Workflow:** Interpret instruction → LLM returns edits → `PlanEditParser` builds `PlanCommand`s → validate → `CommandHistory.executeCommand()` → save → refresh calendar.
-- **Error/Alternative:** Ambiguous target ("that meal") → clarification using `AgentMemory`; edit violates constraints → rejected with explanation; no change possible → message; undo with empty history → no-op notice.
-
-### F07 — Ingredient Substitution (H)
-
-- **Description:** Suggests a replacement for an ingredient (allergy, missing item, preference) and shows the nutrition impact.
-- **User Interaction:** Right-click an ingredient in a recipe → "Substitute…" (or chat).
-- **Input:** Recipe/slot, ingredient, reason.
-- **Output:** `SubstitutionResult` (substitute, adjusted quantity, nutrition delta); can be applied to the plan.
-- **AI Involvement:** Hybrid — LLM proposes options; validator checks constraints; nutrition delta is computed deterministically.
-- **Workflow:** Gather pantry context → LLM proposes → validate against profile → compute nutrition delta → user confirms → apply as an undoable command.
-- **Error/Alternative:** No valid substitute → say so and suggest alternative recipes; substitute not in pantry → add to shopping list option.
-
-### F08 — Serving-Size Adjustment (D)
-
-- **Description:** Scales a recipe or a meal slot to a new number of servings; ingredient amounts and nutrition totals update.
-- **User Interaction:** Servings spinner on a recipe or calendar slot.
-- **Input:** Recipe/slot, new servings.
-- **Output:** Scaled recipe; updated plan, nutrition, and shopping needs.
-- **AI Involvement:** None.
-- **Workflow:** `scaleRecipe()` previews; `scaleSlotServings()` creates a `ScaleServingsCommand`; amounts scaled via `UnitConverter`.
-- **Error/Alternative:** Servings ≤ 0 or > limit → rejected; non-scalable items (e.g., "1 egg" at fractional scale) → rounded with a note.
+The user enters a request.
+SmartRecipeFacade.recommendRecipes(request) calls MealPlanningAgent.recommend(request, profile, pantry).
+The agent loads recipes from RecipeRepository.
+RecipeSelectionStrategy.selectRecipes() shortlists candidates.
+The AIModel selects recipes from the candidates.
+ConstraintValidator.validateRecipe() checks each selected recipe and returns a ValidationResult.
+If there are violations, the agent revises once, adding the violation messages to the prompt.
+Valid recommendations are returned; otherwise the failure is reported.
+Error/Alternative Cases: No recipe satisfies the constraints; the AI names a recipe that is not in the repository; the AI service fails; the user's constraints contradict each other. The system reports the problem instead of showing an invalid recommendation.
 
-### F09 — Nutrition Information Organization (D)
+F05 — AI Weekly Meal Planning
+Description: Creates a meal plan of 5 to 7 days (one dinner per day) from the user's preferences, pantry, and request.
 
-- **Description:** Aggregates calories, protein, carbs, fat, fiber, and sodium per recipe, per day, and per week, and compares against profile targets.
-- **User Interaction:** "Nutrition" tab / day-header badges in the calendar.
-- **Input:** Plan, date (or week), profile targets.
-- **Output:** `NutritionReport` (totals, targets, deltas, warnings).
-- **AI Involvement:** None (data from `NutritionProvider` adapters).
-- **Workflow:** Load plan → `NutritionService.buildReport()` → recursive composite aggregation → compare to targets → display.
-- **Error/Alternative:** Missing nutrition data for an ingredient → lookup via provider, else mark the report "incomplete" and list missing items.
+User Interaction: The user asks the agent to create a weekly plan.
 
-### F10 — Leftover Utilization (H)
+Input: Natural-language request, UserProfile, Pantry, recipe repository.
 
-- **Description:** Suggests meals that use leftover portions and soon-to-expire pantry items to reduce waste.
-- **User Interaction:** "Use Leftovers" button or chat.
-- **Input:** Pantry (expiring items), recorded leftover portions, profile.
-- **Output:** Recommendations that can be inserted into the plan.
-- **AI Involvement:** Hybrid — expiring/leftover data is deterministic; the LLM creatively combines them.
-- **Workflow:** Query expiring items + `LeftoverTracker` → search recipes → LLM proposes combos → validate → display.
-- **Error/Alternative:** Nothing expiring → inform user; no valid combination → suggest freezing/storage tips from the LLM.
+Output: MealPlan.
 
-### F11 — Shopping List Generation with Duplicate Consolidation (D)
+AI Involvement: Hybrid.
 
-- **Description:** Builds a shopping list from the plan's required ingredients, subtracts pantry stock, merges duplicates (e.g., "200 g onion" + "1 onion") using unit conversion, and groups by category.
-- **User Interaction:** "Generate Shopping List" button; checkboxes to tick items off.
-- **Input:** Plan, pantry.
-- **Output:** `ShoppingList` of consolidated items.
-- **AI Involvement:** None.
-- **Workflow:** Collect `getRequiredIngredients()` from the composite → consolidate by name/unit → subtract pantry → group → display.
-- **Error/Alternative:** Incompatible units (cups vs. whole) → kept as separate lines with a note; empty plan → message; everything in stock → "Nothing to buy".
+Expected Workflow:
 
----
+The user submits a planning request.
+SmartRecipeFacade.createMealPlan(request) calls MealPlanningAgent.createPlan(request, profile, pantry).
+The agent loads recipes and the strategy shortlists candidates.
+The AI model selects one recipe for each day from the candidates.
+The agent creates a PlannedMeal for each day and adds it to a MealPlan.
+ConstraintValidator.validatePlan() validates the plan (allergens, dislikes, diet, cooking time, one meal per day, 5 to 7 days).
+If there are violations, the agent revises once with the violation messages.
+A valid plan is returned; otherwise failure is reported.
+Error/Alternative Cases: No valid plan can be built; AI service unavailable; plan violates dietary constraints; the requested number of meals cannot be satisfied.
 
-# 3. UML Class Diagram
+F06 — Meal Plan Editing and Undo
+Description: Replaces one meal in the plan from a natural-language request and lets the user undo the last change.
 
-- [ UML Class Diagram](docs/diagrams/class/class-diagram.puml)
-  ![UML use ](docs/diagrams/class/class-diagram.png)
+User Interaction: The user types a change ("Swap Tuesday's dinner for something vegetarian") or selects a meal, and can press Undo.
 
----
+Input: Existing meal plan, request (day and replacement preference).
 
-# 4. Design Pattern Explanations
+Output: Updated MealPlan.
 
-Seven patterns are used. Each solves a concrete problem in this application.
+AI Involvement: Hybrid.
 
-### 4.1 Facade
+Expected Workflow:
 
-- **Problem:** The GUI and CLI would otherwise need to know about the agent, repositories, pantry, services, and command history, and each front end would duplicate the orchestration logic.
-- **Participants:** `MealPlannerFacade` (Facade); subsystem classes `MealPlanningAgent`, `PantryInventory`, `ShoppingListManager`, `NutritionService`, `LeftoverTracker`, `CommandHistory`, repositories; clients `MealPlannerGUI`, `MealPlannerCLI`.
-- **Why appropriate:** One simple, feature-oriented API (`generateWeeklyPlan()`, `generateShoppingList()`, …) shared by both interfaces; it also acts as the MVC controller.
-- **Without it:** GUI and CLI would be tightly coupled to ~10 subsystem classes, features would be implemented twice, and changing the AI backend would ripple through the UI code.
+The user requests a change.
+SmartRecipeFacade.editMealPlan(request) calls MealPlanningAgent.editPlan(request, plan, profile, pantry).
+The agent loads recipes and the AI model selects a replacement recipe from the repository.
+ConstraintValidator.validateRecipe() checks the replacement.
+The agent returns a ReplaceMealCommand that stores the old and new meals.
+CommandHistory.execute(command) applies it to the MealPlan.
+SmartRecipeFacade.undoLastChange() calls CommandHistory.undo(), which restores the old meal.
+Error/Alternative Cases: The replacement violates constraints; the requested day does not exist; no suitable replacement exists; undo is requested when nothing can be undone (CommandHistory.canUndo() is false).
 
-### 4.2 Strategy
+Undo applies to meal replacement only. Serving adjustment and substitution return a changed copy of the recipe and are not undoable.
 
-- **Problem:** Recipe recommendation must combine several scoring criteria (pantry overlap, preference match, nutrition fit), and the weights/criteria should be changeable without modifying the ranker.
-- **Participants:** `RecipeScoringStrategy` (Strategy), `PantryOverlapStrategy`, `PreferenceMatchStrategy`, `NutritionFitStrategy` (Concrete Strategies), `RecipeRanker` (Context).
-- **Why appropriate:** New criteria (e.g., cost, seasonality) are added as new classes; weights can differ between "recommend" and "use leftovers" without changing `RecipeRanker`.
-- **Without it:** A large `if/else` scoring function that must be edited every time a criterion changes and is hard to unit-test.
+F07 — Serving-Size Adjustment
+Description: Scales a recipe to a requested number of servings.
 
-### 4.3 Adapter
+User Interaction: The user selects a recipe and enters the desired serving count.
 
-- **Problem:** The system must work with external services whose interfaces differ (LLM vendor API, nutrition API) and must be testable offline.
-- **Participants:** Targets `LLMProvider`, `NutritionProvider`; adapters `AnthropicLLMAdapter`, `MockLLMAdapter`, `NutritionApiAdapter`, `LocalNutritionTableAdapter`; clients `AgentWorkflow`, `NutritionService`.
-- **Why appropriate:** Agent code depends only on the target interfaces; vendor HTTP details are isolated in adapters; mocks let us test workflows deterministically.
-- **Without it:** Vendor-specific code would leak throughout the agent, switching providers would be a large rewrite, and tests would require live API calls.
-
-### 4.4 Factory Method
-
-- **Problem:** Recipes originate from different raw formats (LLM JSON with inconsistent units/fields, imported catalog files) but must always become valid, normalized `Recipe` objects.
-- **Participants:** `RecipeFactory` (Creator), `LLMRecipeFactory` and `CatalogRecipeFactory` (Concrete Creators), `Recipe` (Product); clients `RecipeGenerationWorkflow`, `MealPlanWorkflow`, `RecipeRepository`.
-- **Why appropriate:** Each source-specific parsing/normalization rule (e.g., tagging `AI_GENERATED`, standardizing units, defaulting missing fields) is encapsulated; callers only call `createRecipe()`.
-- **Without it:** Parsing logic would be scattered across workflows and the repository, creating inconsistent recipe objects and duplicated cleanup code.
-
-### 4.5 Composite
-
-- **Problem:** A meal plan is a tree (week → days → meals), yet the application needs the same operations (total nutrition, required ingredients, meal count) at every level — per meal, per day, per week.
-- **Participants:** `PlanComponent` (Component), `MealSlot` (Leaf), `DayPlan` and `MealPlan` (Composites).
-- **Why appropriate:** `getTotalNutrition()` and `getRequiredIngredients()` are computed recursively with one uniform call, powering F08/F09/F11 without special-case code.
-- **Without it:** Separate nested loops for each query (daily nutrition, weekly nutrition, shopping needs), with duplicated traversal logic that breaks if the plan structure changes.
-
-### 4.6 Command
-
-- **Problem:** Plan edits come from both the user and the LLM (via natural language), must be undoable/redoable, and should be logged. AI-proposed edits are especially important to reverse.
-- **Participants:** `PlanCommand` (Command), `SwapRecipeCommand`, `AddMealCommand`, `RemoveMealCommand`, `ScaleServingsCommand` (Concrete Commands), `MealPlan` (Receiver), `CommandHistory` (Invoker), `PlanEditParser` (creates commands from LLM output).
-- **Why appropriate:** The LLM returns a _description_ of edits that are converted into command objects; they can be validated, executed, and undone uniformly.
-- **Without it:** Edits would mutate the plan directly, undo would require storing whole-plan snapshots or custom reversal logic per edit type, and LLM mistakes would be hard to roll back.
-
-### 4.7 Observer
-
-- **Problem:** Pantry changes (manual edits, cooking, purchases) must automatically refresh the shopping list and the pantry panel without the pantry knowing about those classes.
-- **Participants:** `PantryInventory` (Subject), `PantryObserver` (Observer), `ShoppingListManager` and `MealPlannerGUI` (Concrete Observers), `PantryEvent`.
-- **Why appropriate:** Decouples the model from the views; new observers (e.g., an expiry notifier) can be added without modifying `PantryInventory`.
-- **Without it:** `PantryInventory` would need direct references to the shopping list and the GUI, and every code path that changes stock would have to remember to refresh them, leading to stale views.
-
-**MVC (architectural):** `MealPlannerGUI`/`MealPlannerCLI` = View, `MealPlannerFacade` = Controller, domain classes = Model.
-
----
-
-# 5. Use-Case Diagram
-
-**Actors**
-
-- **Home Cook** (primary user)
-- **LLM Service** (external AI actor)
-- **Nutrition Data Service** (external API; optional, with a local fallback)
-
-- [UML use case diagram](docs/diagrams/use-case/use-case-diagram.puml)
-  ![UML use case diagram](docs/diagrams/use-case/use-case-diagram.svg)
-
----
-
-# 6. Detailed Use-Case Descriptions
-
-### UC01 — Manage Profile & Dietary Constraints
-
-- **Actor(s):** Home Cook
-- **Goal:** Record diet, allergies, dislikes, and nutrition targets so all suggestions respect them.
-- **Preconditions:** Application is running.
-- **Trigger:** User opens the Profile screen (or `profile set` in the CLI) and presses Save.
-- **Main Success Scenario:** 1) User enters or edits profile fields. 2) GUI sends data to the facade. 3) System validates. 4) System saves the profile. 5) System confirms.
-- **Alternative/Exception Flows:** 3a) Invalid values → field errors, return to step 1. 3b) Conflicting constraints → warning, user corrects. 4a) Storage failure → error shown, profile unchanged.
-- **Postconditions:** A valid `UserProfile` is persisted and used by subsequent AI tasks.
-- **Related Feature(s):** F01
-
-### UC02 — Manage Pantry (including cooking and purchases)
-
-- **Actor(s):** Home Cook
-- **Goal:** Keep the digital pantry in sync with real food stock.
-- **Preconditions:** None (for cooking/purchase updates: a plan slot or shopping list exists).
-- **Trigger:** User adds, edits, or removes a pantry item; marks a meal cooked; or marks shopping items purchased.
-- **Main Success Scenario:** 1) User enters item details (or marks a meal cooked / items purchased, optionally entering leftover portions). 2) System validates. 3) System updates the inventory (adds/edits/removes, deducts cooked ingredients, or adds purchased items) and saves. 4) System notifies observers. 5) Pantry panel and shopping list refresh.
-- **Alternative/Exception Flows:** 2a) Invalid quantity/unit → rejected. 3a) Duplicate ingredient → merge prompt. 3b) Expired date → saved with "expired" flag. 3c) Insufficient stock when cooking → deduct available stock and show shortfall. 3d) Meal already cooked → ignored with message.
-- **Postconditions:** Inventory, slot status, leftover records, and dependent views are consistent.
-- **Related Feature(s):** F02 (also underpins F03, F05, F10, F11)
-
-### UC03 — Search Recipes & Get Recommendations
-
-- **Actor(s):** Home Cook; LLM Service
-- **Goal:** Find recipes that fit available ingredients and receive ranked, explained suggestions.
-- **Preconditions:** Recipe library is loaded; profile exists (defaults allowed).
-- **Trigger:** User submits an ingredient search, presses Recommend, or asks in chat.
-- **Main Success Scenario:** 1) User enters ingredients/filters or a free-text request. 2) For a request, the agent extracts requirements via the LLM. 3) System reads the pantry (UC02 include). 4) System queries the recipe repository, removes recipes violating profile constraints, and ranks the rest. 5) LLM writes explanations (for recommendations). 6) System displays results with pantry-match percentage.
-- **Alternative/Exception Flows:** 1a) Empty search input → prompt. 2a) Ambiguous request → clarification questions. 4a) No results or no recipe passes hard constraints → suggest relaxing filters or UC04. 5a) LLM unavailable → ranked list with generic reasons.
-- **Postconditions:** Results shown; no data changed.
-- **Related Feature(s):** F03
-
-### UC04 — Generate Recipe
-
-- **Actor(s):** Home Cook; LLM Service; Nutrition Data Service
-- **Goal:** Obtain a new, constraint-safe recipe.
-- **Preconditions:** LLM reachable (or mock configured).
-- **Trigger:** User submits a recipe prompt.
-- **Main Success Scenario:** 1) User enters prompt. 2) Agent extracts requirements. 3) Agent gathers pantry context. 4) LLM drafts a recipe. 5) Factory builds a `Recipe`. 6) Validator checks constraints. 7) System computes nutrition. 8) Recipe is saved and displayed.
-- **Alternative/Exception Flows:** 4a) Malformed output → retry (max 2). 6a) Violation (e.g., allergen) → regenerate with feedback; if still failing → error. 7a) Nutrition lookup fails → recipe saved flagged "incomplete nutrition".
-- **Postconditions:** New recipe stored in the library.
-- **Related Feature(s):** F04
-
-### UC05 — Generate Weekly Meal Plan
-
-- **Actor(s):** Home Cook; LLM Service
-- **Goal:** Get a complete validated meal plan for several days.
-- **Preconditions:** Profile exists; recipe library or LLM available.
-- **Trigger:** User presses Generate Week or sends a planning prompt.
-- **Main Success Scenario:** 1) User supplies prompt/options. 2) Agent extracts requirements. 3) Agent reads pantry and finds candidate recipes. 4) LLM proposes a plan. 5) System builds the plan composite. 6) Validator checks the plan. 7) System computes nutrition (UC09 include). 8) Plan is saved and shown in the calendar.
-- **Alternative/Exception Flows:** 2a) Missing info → clarification dialog. 6a) Violations → retry with feedback (max 2); then partial plan with flagged slots. 4a) LLM unavailable → error and offer manual planning.
-- **Postconditions:** A `MealPlan` is saved and set as the current plan.
-- **Related Feature(s):** F05, F09
-
-### UC06 — Modify Plan with Natural Language
-
-- **Actor(s):** Home Cook; LLM Service
-- **Goal:** Change the plan conversationally, with undo.
-- **Preconditions:** A current plan exists.
-- **Trigger:** User types an instruction in chat or presses Undo/Redo.
-- **Main Success Scenario:** 1) User enters instruction. 2) Agent (using memory) interprets it. 3) LLM returns structured edits. 4) System converts them to commands and validates. 5) Commands execute. 6) Plan is saved and the calendar refreshes.
-- **Alternative/Exception Flows:** 2a) Ambiguous target → clarification. 4a) Edit violates constraints → rejected with explanation. Undo/Redo: system reverses/reapplies the last command; empty history → notice.
-- **Postconditions:** Plan updated; change recorded in history.
-- **Related Feature(s):** F06 (extended by F08)
-
-### UC07 — Substitute Ingredient
-
-- **Actor(s):** Home Cook; LLM Service; Nutrition Data Service
-- **Goal:** Replace an ingredient while keeping the recipe valid.
-- **Preconditions:** A recipe or plan slot is selected.
-- **Trigger:** User selects "Substitute…" on an ingredient.
-- **Main Success Scenario:** 1) User picks ingredient and reason. 2) Agent gathers pantry context. 3) LLM proposes a substitute. 4) Validator checks constraints. 5) System computes nutrition delta. 6) User confirms. 7) Substitution applied as an undoable command.
-- **Alternative/Exception Flows:** 4a) No valid substitute → inform user, suggest another recipe. 6a) User declines → nothing changes. 7a) Substitute not in pantry → offer to add to shopping list.
-- **Postconditions:** Slot's recipe updated (if confirmed).
-- **Related Feature(s):** F07
-
-### UC08 — Adjust Servings
-
-- **Actor(s):** Home Cook
-- **Goal:** Scale a recipe or meal to a different number of servings.
-- **Preconditions:** Recipe or slot selected.
-- **Trigger:** User changes the servings control.
-- **Main Success Scenario:** 1) User enters new servings. 2) System scales ingredients and nutrition. 3) For a plan slot, a scale command is executed. 4) Plan and nutrition refresh.
-- **Alternative/Exception Flows:** 1a) Invalid number → rejected. 2a) Non-divisible amounts → rounded with note.
-- **Postconditions:** Slot servings updated (if applied).
-- **Related Feature(s):** F08
-
-### UC09 — View Nutrition Report
-
-- **Actor(s):** Home Cook; Nutrition Data Service
-- **Goal:** Understand nutrition for a day or week versus targets.
-- **Preconditions:** A plan exists.
-- **Trigger:** User opens the Nutrition tab.
-- **Main Success Scenario:** 1) User selects day/week. 2) System aggregates nutrition recursively. 3) System compares with profile targets. 4) Report displayed.
-- **Alternative/Exception Flows:** 2a) Missing data → provider lookup; if unavailable, report flagged incomplete.
-- **Postconditions:** None (read-only).
-- **Related Feature(s):** F09
-
-### UC10 — Use Leftovers
+Input: Recipe, desired servings.
 
-- **Actor(s):** Home Cook; LLM Service
-- **Goal:** Reduce waste by planning around leftovers and expiring items.
-- **Preconditions:** Pantry or leftover records exist.
-- **Trigger:** User presses Use Leftovers.
-- **Main Success Scenario:** 1) System collects expiring items and leftover portions. 2) System finds candidate recipes. 3) LLM proposes combinations. 4) Validator checks them. 5) Suggestions shown; user may add one to the plan.
-- **Alternative/Exception Flows:** 1a) Nothing expiring → message. 4a) No valid combination → storage/freezing tips.
-- **Postconditions:** Suggestions displayed; plan changes only if user accepts.
-- **Related Feature(s):** F10
+Output: Scaled Recipe.
 
-### UC11 — Generate Shopping List
+AI Involvement: Deterministic.
 
-- **Actor(s):** Home Cook
-- **Goal:** Get a consolidated list of what to buy.
-- **Preconditions:** A plan exists.
-- **Trigger:** User presses Generate Shopping List.
-- **Main Success Scenario:** 1) System gathers required ingredients from the plan. 2) Merges duplicates with unit conversion. 3) Subtracts pantry stock. 4) Groups by category. 5) Displays list.
-- **Alternative/Exception Flows:** 2a) Incompatible units → separate lines with note. 1a) Empty plan → message. 3a) Everything in stock → "Nothing to buy".
-- **Postconditions:** `ShoppingList` created and kept in sync via pantry notifications.
-- **Related Feature(s):** F11
+Expected Workflow:
 
----
+The user enters the serving count.
+SmartRecipeFacade.adjustServings(recipe, servings) calls ServingScaler.scale(recipe, servings).
+Ingredient quantities are multiplied by servings / recipe.servings.
+The scaled recipe is returned.
+Error/Alternative Cases: Servings zero or negative; recipe has an invalid ingredient quantity.
 
-# 7. Sequence Diagrams
+F08 — Ingredient Substitution
+Description: Replaces an ingredient in a recipe with a suitable substitute.
 
-Six diagrams cover all 11 features. Features that share the same interaction structure are combined into one diagram, with each feature (or scenario) shown as its own labelled section (`== ... ==`). All diagrams use classes and methods from the class diagram.
+User Interaction: The user selects an ingredient and requests a substitution.
 
-| Diagram                                           | Features      | Use Cases        |
-| ------------------------------------------------- | ------------- | ---------------- |
-| SD01 Profile & Pantry (incl. cooking & purchases) | F01, F02      | UC01, UC02       |
-| SD02 Search, Recommendation & Leftovers           | F03, F10      | UC03, UC10       |
-| SD03 Generate Recipe                              | F04           | UC04             |
-| SD04 Generate Weekly Meal Plan                    | F05           | UC05             |
-| SD05 Modify Plan, Substitute & Scale              | F06, F07, F08 | UC06, UC07, UC08 |
-| SD06 Nutrition Report & Shopping List             | F09, F11      | UC09, UC11       |
+Input: Recipe, ingredient.
 
-## SD01 — Profile & Pantry, including Cooking and Purchases (F01, F02)
+Output: Updated Recipe.
 
-- [Sequence Diagram 1 ](docs/diagrams/sequence/sd01.puml)
-  ![Class Diagram](docs/diagrams/sequence/sd01.svg)
+AI Involvement: Deterministic. Substitutions come from a predefined list and are filtered by the user's allergies and dietary preferences; the AI does not invent substitutions.
 
-## SD02 — Search, Recommendation & Leftovers (F03, F10)
+Expected Workflow:
 
-- [Sequence Diagram 2 ](docs/diagrams/sequence/sd02.puml)
-  ![Class Diagram](docs/diagrams/sequence/sd02.svg)
+The user requests a substitution.
+SmartRecipeFacade.substituteIngredient(recipe, ingredient) calls SubstitutionService.findSubstitute(ingredient, profile).
+The service returns a Substitution that does not conflict with the profile.
+SubstitutionService.applySubstitution(recipe, substitution) replaces the ingredient and converts the quantity with the conversion factor.
+The modified recipe is returned.
+Error/Alternative Cases: No substitute exists; every substitute conflicts with allergies or preferences; conversion factor unavailable.
 
-## SD03 — Generate Recipe (F04)
+F09 — Nutrition Information
+Description: Calculates calories, protein, carbohydrates, and fat for a recipe or for a whole meal plan.
 
-- [Sequence Diagram 3 ](docs/diagrams/sequence/sd03.puml)
-  ![Class Diagram](docs/diagrams/sequence/sd03.svg)
+User Interaction: The user requests nutrition for a selected recipe or for the plan.
 
-## SD04 — Generate Weekly Meal Plan (F05)
+Input: Recipe or meal plan.
 
-- [Sequence Diagram 4 ](docs/diagrams/sequence/sd04.puml)
-  ![Class Diagram](docs/diagrams/sequence/sd04.svg)
+Output: NutritionInfo.
 
-## SD05 — Modify Plan, Substitute & Scale (F06, F07, F08)
+AI Involvement: Deterministic.
 
-- [Sequence Diagram 5 ](docs/diagrams/sequence/sd05.puml)
-  ![Class Diagram](docs/diagrams/sequence/sd05.svg)
+Expected Workflow:
 
-## SD06 — Nutrition Report & Shopping List (F09, F11)
+The user selects a recipe or the plan.
+SmartRecipeFacade.calculateRecipeNutrition(recipe) or calculatePlanNutrition() calls NutritionService.
+For a plan, NutritionService.calculatePlan(plan) calls PlanComponent.getNutrition(), which sums the planned meals.
+The result is displayed.
+Error/Alternative Cases: Missing nutrition data; invalid recipe data; empty plan.
 
-- [Sequence Diagram 6 ](docs/diagrams/sequence/sd06.puml)
-  ![Class Diagram](docs/diagrams/sequence/sd06.svg)
+F10 — Shopping List Generation
+Description: Generates a shopping list from the meal plan, subtracting what is already in the pantry.
 
----
+User Interaction: The user selects "Generate Shopping List".
 
-# 8. Feature-to-Design Traceability Table
+Input: Meal plan, pantry.
 
-| Feature | Description                                                | Type | Use Case | Classes                                                                                                                                                                                                      | Key Methods                                                                                                                                             | Sequence Diagram | Design Pattern(s)                          |
-| ------- | ---------------------------------------------------------- | ---- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ------------------------------------------ |
-| F01     | Preference profile & dietary constraints                   | D    | UC01     | MealPlannerGUI/CLI, MealPlannerFacade, UserProfile, Repository, JsonFileRepository                                                                                                                           | onProfileSaved(), saveProfile(), validate(), save()                                                                                                     | SD01             | Facade                                     |
-| F02     | Pantry management & automatic updates (cooking, purchases) | D    | UC02     | MealPlannerGUI/CLI, MealPlannerFacade, PantryInventory, PantryItem, PantryEvent, PantryObserver, ShoppingListManager, MealPlan, MealSlot, LeftoverTracker                                                    | addPantryItem(), addItem(), consume(), notifyObservers(), onPantryChanged(), markMealCooked(), markItemsPurchased(), markPurchased(), recordLeftovers() | SD01             | Observer, Facade                           |
-| F03     | Recipe search & AI recommendation                          | H    | UC03     | RecipeRepository, SearchFilters, MealPlanningAgent, RecommendationWorkflow, ToolManager, PantryQueryTool, RecipeSearchTool, RecipeRanker, RecipeScoringStrategy (3 impls), LLMProvider, RecipeRecommendation | searchByIngredients(), recommendRecipes(), handle(), execute(), rank(), score(), complete()                                                             | SD02             | Strategy, Adapter, Facade                  |
-| F04     | AI recipe generation                                       | H    | UC04     | RecipeGenerationWorkflow, PromptBuilder, LLMProvider, LLMRecipeFactory, ConstraintValidator, NutritionService, NutritionProvider, RecipeRepository                                                           | generateRecipe(), buildRecipePrompt(), createRecipe(), validateRecipe(), enrichRecipe(), lookup()                                                       | SD03             | Factory Method, Adapter, Facade            |
-| F05     | Weekly meal planning                                       | H    | UC05     | MealPlanWorkflow, MealPlan, DayPlan, MealSlot, ConstraintValidator, NutritionService, ToolManager, LLMRecipeFactory, Repository                                                                              | generateWeeklyPlan(), execute(), buildPlanPrompt(), addDay(), addSlot(), validatePlan(), summarize()                                                    | SD04             | Composite, Factory Method, Adapter, Facade |
-| F06     | NL plan modification (+undo/redo)                          | H    | UC06     | PlanModificationWorkflow, AgentMemory, PlanEditParser, PlanCommand (4 impls), CommandHistory, MealPlan                                                                                                       | modifyPlan(), buildEditPrompt(), toCommands(), executeCommand(), undo(), redo(), remember()                                                             | SD05             | Command, Adapter, Facade                   |
-| F07     | Ingredient substitution                                    | H    | UC07     | SubstitutionWorkflow, SubstitutionResult, Recipe, ConstraintValidator, NutritionLookupTool, SwapRecipeCommand, CommandHistory                                                                                | substituteIngredient(), applySubstitution(), buildSubstitutionPrompt(), Recipe.applySubstitution()                                                      | SD05             | Command, Adapter, Facade                   |
-| F08     | Serving-size adjustment                                    | D    | UC08     | Recipe, UnitConverter, ScaleServingsCommand, CommandHistory, MealSlot, MealPlan                                                                                                                              | scaleRecipe(), scaleSlotServings(), Recipe.scaleTo(), convert(), setServings()                                                                          | SD05             | Command, Composite                         |
-| F09     | Nutrition information organization                         | D    | UC09     | NutritionService, NutritionReport, NutritionProvider (+2 adapters), PlanComponent, MealPlan, DayPlan, MealSlot, NutritionInfo                                                                                | getNutritionReport(), buildReport(), getTotalNutrition(), add(), lookup()                                                                               | SD06             | Composite, Adapter                         |
-| F10     | Leftover utilization                                       | H    | UC10     | LeftoverWorkflow, LeftoverTracker, LeftoverPortion, PantryInventory, PantryQueryTool, RecipeSearchTool, LLMProvider, ConstraintValidator                                                                     | suggestLeftoverUses(), getExpiringSoon(), getAvailable(), buildLeftoverPrompt()                                                                         | SD02             | Strategy, Adapter, Facade                  |
-| F11     | Shopping list & duplicate consolidation                    | D    | UC11     | ShoppingListManager, ShoppingList, ShoppingItem, UnitConverter, PantryInventory, MealPlan                                                                                                                    | generateShoppingList(), generate(), consolidate(), getRequiredIngredients(), findByName(), convert()                                                    | SD06             | Composite, Observer, Facade                |
+Output: ShoppingList.
 
-**Pattern coverage check:** Facade (all features), Strategy (F03, F10), Adapter (F03–F07, F09, F10), Factory Method (F04, F05), Composite (F05, F08, F09, F11), Command (F06–F08), Observer (F02, F11).
+AI Involvement: Deterministic.
 
----
+Expected Workflow:
 
-# 9. Feature Implementation Explanations
+The user requests a shopping list.
+SmartRecipeFacade.generateShoppingList() calls ShoppingListService.generate(plan, pantry).
+PlanComponent.getIngredients() collects the required ingredients.
+Duplicates are consolidated (same ingredient, compatible units).
+Pantry quantities are subtracted.
+Missing quantities become ShoppingItems in the ShoppingList.
+Error/Alternative Cases: Empty meal plan; missing ingredient quantity; incompatible units (for example g and ml) are kept as separate lines. Supported units are g, kg, ml, l and pcs only.
 
-### F01 — Preference Profile & Dietary Constraints
+3. UML Class Diagram
+   [Class diagram source (PlantUML)](docs/uml-diagrams/class/class-diagram.puml)
 
-**Use Case:** UC01 | **Sequence Diagram:** SD01
-**Classes:** `MealPlannerGUI`/`MealPlannerCLI` collect input; `MealPlannerFacade` coordinates; `UserProfile` holds and validates data; `Repository<UserProfile>` persists.
-**Methods:** `onProfileSaved()`, `saveProfile()`, `UserProfile.validate()`, `Repository.save()`.
-**Execution:** On Save, the view calls `saveProfile()`. The facade calls `validate()`, which returns a list of problems (negative targets, empty name, contradictory constraints). If empty, the facade saves via the repository and the view shows a confirmation; otherwise `showError()` is called. Allergies are stored as hard constraints that `ConstraintValidator` later enforces.
+![UML Class Diagram](docs/uml-diagrams/class/class-diagram.png)
 
-### F02 — Pantry Inventory Management & Automatic Updates
+Design patterns shown in the diagram: Facade (SmartRecipeFacade), Adapter (AIModel, AIAdapter, AIClient), Strategy (RecipeSelectionStrategy and its two implementations), Command (Command, ReplaceMealCommand, CommandHistory) and Composite (PlanComponent, MealPlan, PlannedMeal). They are explained in Section 4.
 
-**Use Case:** UC02 | **Sequence Diagram:** SD01
-**Classes:** `PantryInventory` (Subject), `PantryItem`, `PantryEvent`, `PantryObserver`, `ShoppingListManager` and `MealPlannerGUI` (Observers), `MealPlannerFacade`, `MealPlan`, `MealSlot`, `LeftoverTracker`.
-**Methods:** `addPantryItem()`, `updatePantryItem()`, `removePantryItem()`, `addItem()`, `consume()`, `notifyObservers()`, `onPantryChanged()`, `markMealCooked()`, `markItemsPurchased()`, `markPurchased()`, `recordLeftovers()`.
-**Execution:** For manual edits, the facade forwards the change to `PantryInventory`, which validates, mutates its item list, persists it, and creates a `PantryEvent`; `notifyObservers()` calls `onPantryChanged()` on every observer so the pantry panel and shopping list refresh. When a meal is marked cooked, the facade sets the slot status, calls `consume()` for each scaled ingredient (returning any shortfall for a warning), and records leftover portions. When items are marked purchased, `ShoppingListManager.markPurchased()` moves them into the pantry via `addItem()`.
+Reading the diagram:
 
-### F03 — Recipe Search & AI Recommendation
+PlanComponent is implemented by MealPlan (composite, holds 5..7 PlannedMeal) and PlannedMeal (leaf, one recipe times its servings).
+AIModel is implemented by AIAdapter (which uses AIClient) and by MockAIModel.
+MealPlanningAgent returns a Command (concretely a ReplaceMealCommand) from editPlan(). SmartRecipeFacade passes it to CommandHistory.execute().
+ConstraintValidator returns a ValidationResult that carries violation messages, so the agent can use them to revise. 4. Design Pattern Explanations
+The design uses five patterns. Each solves a specific problem in SmartPlate.
 
-**Use Case:** UC03 | **Sequence Diagram:** SD02
-**Classes:** `RecipeRepository`, `SearchFilters`, `MealPlannerFacade`, `MealPlanningAgent`, `RecommendationWorkflow`, `ToolManager`, `PantryQueryTool`, `RecipeSearchTool`, `RecipeRanker`, three `RecipeScoringStrategy` classes, `LLMProvider`, `RecipeRecommendation`.
-**Methods:** `searchByIngredients()`, `recommendRecipes()`, `handle()`, `execute()`, `PantryQueryTool.execute()`, `RecipeSearchTool.execute()`, `RecipeRanker.rank()`, `score()`, `LLMProvider.complete()`.
-**Execution:** _Search:_ the view passes ingredient names and filters to the facade, which asks `RecipeRepository` to match recipes by ingredient overlap, applying filters and profile restrictions; results are shown with match %. _Recommend:_ the facade wraps the prompt in an `AgentRequest` with intent `RECOMMEND`. The workflow asks the LLM to extract requirements, then pulls pantry data and a ranked candidate list through the tools. `RecipeRanker` combines the weighted strategy scores deterministically, the LLM writes a short reason per recommendation, and `RecipeRecommendation` objects are returned to the view.
+4.1 Facade
+Problem: The GUI and CLI would otherwise need to know about the agent, the repository, the services, and the command history, and each interface would duplicate that logic.
 
-### F04 — AI Recipe Generation
+Participants and roles:
 
-**Use Case:** UC04 | **Sequence Diagram:** SD03
-**Classes:** `RecipeGenerationWorkflow`, `PromptBuilder`, `LLMProvider`, `LLMRecipeFactory`, `ConstraintValidator`, `NutritionService`, `NutritionProvider`, `RecipeRepository`.
-**Methods:** `generateRecipe()`, `buildRecipePrompt()`, `complete()`, `createRecipe()`, `validateRecipe()`, `enrichRecipe()`, `lookup()`, `save()`.
-**Execution:** The workflow gathers pantry context and builds a JSON-schema prompt. The LLM's output is converted by `LLMRecipeFactory` into a normalized `Recipe`. `ConstraintValidator` rejects recipes containing allergens or violating diet rules, triggering a retry with the violations appended. A valid recipe gets nutrition computed deterministically by `NutritionService`, is saved, and returned.
+SmartRecipeFacade — Facade, one simple method per feature.
+Subsystem: MealPlanningAgent, RecipeRepository, NutritionService, ServingScaler, SubstitutionService, ShoppingListService, CommandHistory.
+Clients: MealPlannerGUI, MealPlannerCLI.
+Why appropriate: Both interfaces call the same methods, so behavior is identical.
 
-### F05 — Weekly Meal Planning
+Without it: The GUI and CLI would each depend on about eight classes, every feature would be implemented twice, and an internal change would break both interfaces.
 
-**Use Case:** UC05 | **Sequence Diagram:** SD04
-**Classes:** `MealPlanWorkflow`, `ToolManager`, tools, `LLMProvider`, `LLMRecipeFactory`, `MealPlan`/`DayPlan`/`MealSlot`, `ConstraintValidator`, `NutritionService`, `Repository<MealPlan>`.
-**Methods:** `generateWeeklyPlan()`, `execute()`, `extractRequirements()`, `gatherContext()`, `buildPlanPrompt()`, `addDay()`, `addSlot()`, `validatePlan()`, `summarize()`, `save()`.
-**Execution:** The workflow extracts requirements (asking clarifying questions when `missingInfo` is non-empty), retrieves pantry and candidate recipes via tools, and asks the LLM for a structured plan. The response is assembled into the `MealPlan` composite, and `validatePlan()` checks allergens, calorie ranges, and variety. Violations are fed back for a bounded number of retries. The final plan is saved and displayed.
+4.2 Adapter
+Problem: LLM providers expose different APIs, and the project must also run without any provider (offline and in tests).
 
-### F06 — Natural-Language Plan Modification
+Participants and roles:
 
-**Use Case:** UC06 | **Sequence Diagram:** SD05
-**Classes:** `PlanModificationWorkflow`, `AgentMemory`, `PlanEditParser`, `PlanCommand` implementations, `CommandHistory`, `MealPlan`.
-**Methods:** `modifyPlan()`, `getRecentContext()`, `buildEditPrompt()`, `toCommands()`, `executeCommand()`, `undo()`, `redo()`.
-**Execution:** The agent adds recent conversation context so references like "that dinner" resolve. The LLM returns structured edits, `PlanEditParser` turns them into command objects, and the validator checks any new recipes. The facade runs each command through `CommandHistory`, which stores it on the undo stack; `undoLastChange()` calls `undo()` on the last command.
+AIModel — target interface used by the agent.
+AIAdapter — adapter; translates generate(prompt) into the provider's request.
+AIClient — adaptee; the provider-specific client.
+MockAIModel — offline implementation of the same interface.
+MealPlanningAgent — client.
+Why appropriate: The agent depends only on AIModel, so the provider can change without touching the agent.
 
-### F07 — Ingredient Substitution
+Without it: Provider-specific code would spread through the agent, and tests would need a live API.
 
-**Use Case:** UC07 | **Sequence Diagram:** SD05
-**Classes:** `SubstitutionWorkflow`, `SubstitutionResult`, `Recipe`, `ConstraintValidator`, `NutritionLookupTool`, `SwapRecipeCommand`, `CommandHistory`.
-**Methods:** `substituteIngredient()`, `buildSubstitutionPrompt()`, `validateRecipe()`, `NutritionLookupTool.execute()`, `applySubstitution()`, `Recipe.applySubstitution()`.
-**Execution:** The LLM proposes a substitute considering the reason and pantry contents. The validator ensures it does not break constraints, and a tool computes the nutrition difference. The user sees the proposal and confirms; `applySubstitution()` creates a modified copy of the recipe and applies it as an undoable `SwapRecipeCommand`.
+4.3 Strategy
+Problem: There is more than one sensible way to choose recipes (use what is in the pantry, or choose the fastest).
 
-### F08 — Serving-Size Adjustment
+Participants and roles:
 
-**Use Case:** UC08 | **Sequence Diagram:** SD05
-**Classes:** `Recipe`, `UnitConverter`, `ScaleServingsCommand`, `CommandHistory`, `MealSlot`, `MealPlan`.
-**Methods:** `scaleRecipe()`, `Recipe.scaleTo()`, `UnitConverter.convert()`, `scaleSlotServings()`, `executeCommand()`, `MealSlot.setServings()`.
-**Execution:** For previews, `Recipe.scaleTo()` multiplies ingredient quantities (normalizing units) and nutrition. For plan slots, a `ScaleServingsCommand` records old and new servings so the change can be undone; composite aggregation then automatically updates nutrition and shopping needs.
+RecipeSelectionStrategy — strategy interface with selectRecipes().
+PantryFirstStrategy, FastestMealStrategy — concrete strategies.
+MealPlanningAgent — context; calls selectRecipes() and can switch with setStrategy().
+Why appropriate: A new selection rule is a new class; the agent does not change.
 
-### F09 — Nutrition Information Organization
+Without it: The agent would contain if/else selection logic that grows with every new rule and is hard to test.
 
-**Use Case:** UC09 | **Sequence Diagram:** SD06
-**Classes:** `NutritionService`, `NutritionReport`, `NutritionInfo`, `PlanComponent` composite classes, `NutritionProvider` and adapters.
-**Methods:** `getNutritionReport()`, `buildReport()`, `getTotalNutrition()`, `NutritionInfo.add()`, `lookup()`.
-**Execution:** `buildReport()` asks the chosen composite node (a day or the whole plan) for `getTotalNutrition()`, which recursively sums child nutrition scaled by servings. Totals are compared with profile targets to produce deltas and warnings. Missing ingredient data triggers a provider lookup; if that fails, the report is marked incomplete.
+4.4 Command
+Problem: A meal-plan change must be reversible.
 
-### F10 — Leftover Utilization
+Participants and roles:
 
-**Use Case:** UC10 | **Sequence Diagram:** SD02
-**Classes:** `LeftoverWorkflow`, `LeftoverTracker`, `PantryInventory`, `PantryQueryTool`, `RecipeSearchTool`, `LLMProvider`, `ConstraintValidator`.
-**Methods:** `suggestLeftoverUses()`, `getExpiringSoon()`, `getAvailable()`, `buildLeftoverPrompt()`, `validateRecipe()`.
-**Execution:** The workflow deterministically collects expiring items and leftover portions, finds candidate recipes, then lets the LLM propose creative combinations (e.g., fried rice from leftover rice and wilting vegetables). Suggestions are validated and returned as recommendations the user can add to the plan through F06.
+Command — interface with execute() and undo().
+ReplaceMealCommand — concrete command; stores the day, the old meal, and the new meal.
+CommandHistory — invoker; runs commands and keeps the undo stack.
+MealPlan — receiver.
+MealPlanningAgent — creates the command; SmartRecipeFacade passes it to CommandHistory.
+Why appropriate: The old meal is saved inside the command, so undo needs no special code elsewhere.
 
-### F11 — Shopping List Generation with Duplicate Consolidation
+Without it: Each edit would modify the plan directly and undo would need ad-hoc copies of the plan.
 
-**Use Case:** UC11 | **Sequence Diagram:** SD06
-**Classes:** `ShoppingListManager`, `ShoppingList`, `ShoppingItem`, `UnitConverter`, `PantryInventory`, `MealPlan`.
-**Methods:** `generateShoppingList()`, `generate()`, `getRequiredIngredients()`, `consolidate()`, `areCompatible()`, `convert()`, `findByName()`.
-**Execution:** `generate()` retrieves every required ingredient through one composite call, groups items by normalized name, converts compatible units, sums quantities, subtracts matching pantry stock, and groups by category. As an observer of `PantryInventory`, `ShoppingListManager` also updates the list when stock changes.
+4.5 Composite
+Problem: Nutrition totals and ingredient lists are needed for a single planned meal and for the whole plan, using the same code.
 
----
+Participants and roles:
 
-# Appendix A — Requirement Checklist
+PlanComponent — component interface: getNutrition(), getIngredients(), getCookingTime().
+MealPlan — composite; combines its PlannedMeal children.
+PlannedMeal — leaf; one recipe times its servings.
+NutritionService, ShoppingListService — clients that only know PlanComponent.
+Why appropriate: calculatePlan(plan) and generate(plan, pantry) work on any plan component without checking its type.
 
-| Requirement                                | Where satisfied                                                                          |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| GUI                                        | `MealPlannerGUI` (calendar, recipe browser, pantry, shopping list, chat) — §1.7, §3      |
-| CLI                                        | `MealPlannerCLI` via the same `MealPlannerFacade` — §1.7, §3                             |
-| ≥ 10 meaningful features                   | F01–F11 — §2                                                                             |
-| ≥ 5 design patterns                        | 7 patterns — §4                                                                          |
-| AI/LLM model                               | `LLMProvider` → `AnthropicLLMAdapter` (+ `MockLLMAdapter`) — §1.5                        |
-| Agent behavior                             | Multi-step workflows, tool use, memory, validation/retry, decision making — §1.4, §3, §7 |
-| Class, use-case, sequence diagrams         | §3, §5, §7                                                                               |
-| Traceability + implementation explanations | §8, §9                                                                                   |
+Without it: The services would need separate loops and type checks for a single meal and for a plan, and adding a new grouping (for example, a day) would require changing both services.
+
+5. Use-Case Diagram
+   Actors
+
+User — primary actor.
+AI Service — external AI/LLM service used by the agent.
+The GUI and CLI are presentation channels, not separate actors. Both reach the same functionality through SmartRecipeFacade.
+
+[Use-case diagram source (PlantUML)](docs/uml-diagrams/use-case/use-case-diagram.puml)
+
+![UML Use-Case Diagram](docs/uml-diagrams/use-case/use-case-diagram.png)
+
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor User
+actor "AI Service" as AI
+
+rectangle "SmartPlate" {
+usecase "UC01\nManage Preferences" as UC01
+usecase "UC02\nManage Pantry" as UC02
+usecase "UC03\nSearch Recipes" as UC03
+usecase "UC04\nGet AI Recipe\nRecommendations" as UC04
+usecase "UC05\nCreate Weekly\nMeal Plan" as UC05
+usecase "UC06\nEdit Meal Plan\nand Undo Changes" as UC06
+usecase "UC07\nAdjust Serving Size" as UC07
+usecase "UC08\nSubstitute Ingredient" as UC08
+usecase "UC09\nCalculate Nutrition" as UC09
+usecase "UC10\nGenerate Shopping List" as UC10
+}
+
+User --> UC01
+User --> UC02
+User --> UC03
+User --> UC04
+User --> UC05
+User --> UC06
+User --> UC07
+User --> UC08
+User --> UC09
+User --> UC10
+
+UC04 --> AI
+UC05 --> AI
+UC06 --> AI
+@enduml
+Only UC04, UC05 and UC06 involve the AI Service. UC08 (substitution) is deterministic.
+
+6. Detailed Use-Case Descriptions
+   UC01 — Manage Preferences
+   Actor(s): User
+   Goal: Configure dietary and meal-planning preferences.
+   Preconditions: Application is running.
+   Trigger: User opens the preference section (or the CLI profile command).
+   Main Success Scenario:
+   User enters preferences.
+   GUI/CLI calls SmartRecipeFacade.setupProfile(profile).
+   UserProfile.validate() returns no problems.
+   The profile is stored.
+   System confirms the updated profile.
+   Alternative/Exception Flows: 3a) validate() returns problems → the previous profile is kept and the errors are shown.
+   Postconditions: The profile contains the updated preferences.
+   Related Feature: F01
+   UC02 — Manage Pantry
+   Actor(s): User
+   Goal: Maintain the pantry inventory.
+   Preconditions: Application is running.
+   Trigger: User opens pantry management.
+   Main Success Scenario:
+   User selects add, update, or remove and enters the item details.
+   GUI/CLI calls SmartRecipeFacade.managePantry(action, item).
+   Pantry is modified.
+   The updated pantry is displayed.
+   Alternative/Exception Flows: 3a) Ingredient not found → error. 3b) Invalid quantity or unit → error.
+   Postconditions: The pantry reflects the change.
+   Related Feature: F02
+   UC03 — Search Recipes
+   Actor(s): User
+   Goal: Find recipes matching a query.
+   Preconditions: Recipe repository is available.
+   Trigger: User enters a search query.
+   Main Success Scenario:
+   User enters a query.
+   Facade calls RecipeRepository.search(query).
+   Repository returns matching recipes.
+   Results are displayed.
+   Alternative/Exception Flows: 1a) Empty query → message. 3a) No match → "no recipes found".
+   Postconditions: Matching recipes are displayed.
+   Related Feature: F03
+   UC04 — Get AI Recipe Recommendations
+   Actor(s): User, AI Service
+   Goal: Obtain personalized recipe recommendations.
+   Preconditions: User profile exists; recipe repository is available.
+   Trigger: User submits a recommendation request.
+   Main Success Scenario:
+   User submits a natural-language request.
+   Facade calls MealPlanningAgent.recommend(request, profile, pantry).
+   The agent obtains recipes from RecipeRepository.
+   RecipeSelectionStrategy shortlists candidates.
+   AIModel.generate() selects recipes from the candidates.
+   ConstraintValidator.validateRecipe() checks the selected recipes.
+   Valid recommendations are returned and displayed.
+   Alternative/Exception Flows: 5a) AI service unavailable → error. 5b) AI names a recipe that is not in the repository → rejected. 6a) Violations → the agent revises once with the violation messages; if still invalid, the failure is reported. No valid recipe exists → message.
+   Postconditions: Valid recommendations are displayed.
+   Related Feature: F04
+   UC05 — Create Weekly Meal Plan
+   Actor(s): User, AI Service
+   Goal: Create a valid meal plan of 5 to 7 days.
+   Preconditions: User profile exists; recipe repository is available.
+   Trigger: User submits a planning request.
+   Main Success Scenario:
+   User enters a planning request.
+   Facade calls MealPlanningAgent.createPlan(request, profile, pantry).
+   The agent retrieves recipes and the strategy shortlists candidates.
+   AIModel.generate() selects one recipe per day.
+   The agent creates PlannedMeal objects and adds them to a MealPlan.
+   ConstraintValidator.validatePlan() checks the plan.
+   The valid plan is returned and displayed.
+   Alternative/Exception Flows: 4a) AI service fails → error. 6a) Violations → revise once with the violation messages; if still invalid, report failure.
+   Postconditions: A valid plan is displayed and becomes the current plan.
+   Related Feature: F05
+   UC06 — Edit Meal Plan and Undo Changes
+   Actor(s): User, AI Service
+   Goal: Replace a meal in the plan and optionally undo the change.
+   Preconditions: A meal plan exists.
+   Trigger: User requests a change or presses Undo.
+   Main Success Scenario:
+   User requests a meal change.
+   Facade calls MealPlanningAgent.editPlan(request, plan, profile, pantry).
+   The AI model selects a replacement recipe from the repository.
+   The agent validates the replacement with ConstraintValidator.
+   The agent returns a ReplaceMealCommand.
+   CommandHistory.execute(command) applies the change.
+   The updated plan is displayed.
+   Undo Flow:
+   User selects Undo.
+   Facade calls undoLastChange(), which checks CommandHistory.canUndo().
+   CommandHistory.undo() calls ReplaceMealCommand.undo(), which restores the previous meal.
+   The restored plan is displayed.
+   Alternative/Exception Flows: No valid replacement → error. Invalid day → error. Nothing to undo → message.
+   Postconditions: The plan reflects the valid change, or the previous state after undo.
+   Related Feature: F06
+   UC07 — Adjust Serving Size
+   Actor(s): User
+   Goal: Change the serving size of a recipe.
+   Preconditions: A recipe exists.
+   Trigger: User enters a new serving count.
+   Main Success Scenario:
+   User selects a recipe and enters the serving count.
+   Facade calls adjustServings(recipe, servings), which calls ServingScaler.scale().
+   Ingredient quantities are recalculated.
+   The scaled recipe is displayed.
+   Alternative/Exception Flows: Serving count is zero or negative → rejected.
+   Postconditions: The returned recipe has adjusted quantities.
+   Related Feature: F07
+   UC08 — Substitute Ingredient
+   Actor(s): User
+   Goal: Replace an ingredient with a suitable alternative.
+   Preconditions: A recipe exists.
+   Trigger: User requests an ingredient substitution.
+   Main Success Scenario:
+   User selects an ingredient.
+   Facade calls SubstitutionService.findSubstitute(ingredient, profile).
+   A substitute that does not conflict with the profile is found.
+   applySubstitution(recipe, substitution) updates the recipe.
+   The updated recipe is displayed.
+   Alternative/Exception Flows: No substitute exists → message. Every substitute conflicts with allergies or preferences → message.
+   Postconditions: The returned recipe contains the substitution.
+   Related Feature: F08
+   UC09 — Calculate Nutrition
+   Actor(s): User
+   Goal: Obtain nutrition information.
+   Preconditions: A recipe or meal plan exists.
+   Trigger: User requests nutrition information.
+   Main Success Scenario:
+   User selects a recipe or the plan.
+   Facade calls calculateRecipeNutrition(recipe) or calculatePlanNutrition(), which calls NutritionService.
+   Nutrition is calculated.
+   NutritionInfo is displayed.
+   Alternative/Exception Flows: Nutrition data is missing → reported.
+   Postconditions: Nutrition information is displayed.
+   Related Feature: F09
+   UC10 — Generate Shopping List
+   Actor(s): User
+   Goal: Generate a grocery list from the meal plan and pantry.
+   Preconditions: A meal plan exists; the pantry is available.
+   Trigger: User selects Generate Shopping List.
+   Main Success Scenario:
+   Facade calls ShoppingListService.generate(plan, pantry).
+   Required ingredients are obtained through PlanComponent.getIngredients().
+   Duplicates are consolidated.
+   Pantry quantities are subtracted.
+   The shopping list is returned and displayed.
+   Alternative/Exception Flows: Empty plan → message. Missing quantity → item skipped with a note. Incompatible units → separate lines.
+   Postconditions: A consolidated shopping list is available.
+   Related Feature: F10
+7. Sequence Diagrams
+   Six sequence diagrams cover all 10 features. Features with the same interaction structure share a diagram, shown as separate labelled sections. Every class and method used appears in the class diagram.
+
+Diagram Features Use cases
+SD01 Preferences and Pantry F01, F02 UC01, UC02
+SD02 Recipe Search F03 UC03
+SD03 AI Recipe Recommendation F04 UC04
+SD04 AI Weekly Meal Plan F05 UC05
+SD05 Edit Meal Plan and Undo F06 UC06
+SD06 Recipe Utilities F07, F08, F09, F10 UC07–UC10
+SD01 — Preferences and Pantry (F01, F02)
+[Source](docs/uml-diagrams/sequence/SD01.puml)
+
+![SD01](docs/uml-diagrams/sequence/SD01.png)
+
+SD02 — Recipe Search (F03)
+[Source](docs/uml-diagrams/sequence/SD02.puml)
+
+![SD02](docs/uml-diagrams/sequence/SD02.png)
+
+SD03 — AI Recipe Recommendation (F04)
+[Source](docs/uml-diagrams/sequence/SD03.puml)
+
+![SD03](docs/uml-diagrams/sequence/SD03.png)
+
+SD04 — AI Weekly Meal Plan Creation (F05)
+[Source](docs/uml-diagrams/sequence/SD04.puml)
+
+![SD04](docs/uml-diagrams/sequence/SD04.png)
+
+This diagram shows the agent behavior: retrieve, shortlist, AI choice, build plan, validate, revise once, then return or report failure.
+
+SD05 — Edit Meal Plan and Undo (F06)
+[Source](docs/uml-diagrams/sequence/SD05.puml)
+
+![SD05](docs/uml-diagrams/sequence/SD05.png)
+
+SD06 — Recipe Utilities (F07, F08, F09, F10)
+[Source](docs/uml-diagrams/sequence/SD06.puml)
+
+![SD06](docs/uml-diagrams/sequence/SD06.png)
+
+8. Feature-to-Design Traceability Table
+   Feature Description Type Use case Main classes Key methods Sequence Patterns
+   F01 Set preferences Deterministic UC01 SmartRecipeFacade, UserProfile setupProfile(), validate() SD01 Facade
+   F02 Manage pantry Deterministic UC02 SmartRecipeFacade, Pantry, PantryItem, Ingredient managePantry(), addItem(), updateItem(), removeItem() SD01 Facade
+   F03 Search recipes Deterministic UC03 SmartRecipeFacade, RecipeRepository searchRecipes(), search() SD02 Facade
+   F04 AI recommendation Hybrid UC04 SmartRecipeFacade, MealPlanningAgent, RecipeRepository, RecipeSelectionStrategy, AIModel, ConstraintValidator, ValidationResult recommendRecipes(), recommend(), selectRecipes(), generate(), validateRecipe() SD03 Facade, Strategy, Adapter
+   F05 AI weekly plan Hybrid UC05 as F04, plus MealPlan, PlannedMeal createMealPlan(), createPlan(), selectRecipes(), generate(), validatePlan(), addMeal() SD04 Facade, Strategy, Adapter, Composite
+   F06 Edit plan and undo Hybrid UC06 SmartRecipeFacade, MealPlanningAgent, AIModel, ConstraintValidator, ReplaceMealCommand, CommandHistory, MealPlan editMealPlan(), editPlan(), execute(), undo(), canUndo(), replaceMeal() SD05 Facade, Adapter, Command
+   F07 Adjust servings Deterministic UC07 SmartRecipeFacade, ServingScaler, Recipe adjustServings(), scale() SD06 Facade
+   F08 Substitute ingredient Deterministic UC08 SmartRecipeFacade, SubstitutionService, Substitution, UserProfile substituteIngredient(), findSubstitute(), applySubstitution() SD06 Facade
+   F09 Nutrition Deterministic UC09 SmartRecipeFacade, NutritionService, NutritionInfo, PlanComponent, MealPlan, PlannedMeal calculateRecipeNutrition(), calculatePlanNutrition(), calculateRecipe(), calculatePlan(), getNutrition() SD06 Facade, Composite
+   F10 Shopping list Deterministic UC10 SmartRecipeFacade, ShoppingListService, ShoppingList, ShoppingItem, Pantry, PlanComponent generateShoppingList(), generate(), getIngredients(), consolidate() SD06 Facade, Composite
+   Every feature maps to a use case, classes, methods, a sequence diagram, and at least one design pattern.
+
+9. Feature Implementation Explanations
+   F01 — Preference Profile Management
+   Related Use Case: UC01 — Manage Preferences Related Sequence Diagram: SD01
+
+Classes involved:
+
+MealPlannerGUI / MealPlannerCLI — collect the preferences from the user.
+SmartRecipeFacade — entry point; decides whether the profile is accepted.
+UserProfile — holds the preferences and checks them.
+Important methods: SmartRecipeFacade.setupProfile(), UserProfile.validate().
+
+Execution: The user enters preferences and the interface calls setupProfile(profile). The facade calls validate(), which returns a list of problems (servings or time below 1, malformed entries). If the list is empty, the profile is stored and returned. Otherwise the previous valid profile is kept and the errors are shown. The profile is later used by ConstraintValidator, SubstitutionService and the recipe-selection strategies.
+
+F02 — Pantry Inventory Management
+Related Use Case: UC02 — Manage Pantry Related Sequence Diagram: SD01
+
+Classes involved:
+
+MealPlannerGUI / MealPlannerCLI — collect the pantry operation and item details.
+SmartRecipeFacade — routes the operation by PantryAction.
+Pantry — holds and modifies the items.
+PantryItem — one ingredient with a quantity and unit.
+Ingredient — the ingredient identity (name, category).
+Important methods: SmartRecipeFacade.managePantry(), Pantry.addItem(), updateItem(), removeItem(), findItem().
+
+Execution: The interface calls managePantry(action, item). Depending on ADD, UPDATE or REMOVE, the facade calls the matching Pantry method. Pantry rejects a non-positive quantity, a unit other than g, kg, ml, l or pcs, and an update or removal of an item that is not there. On success the updated pantry is returned for display. PantryFirstStrategy and ShoppingListService later read this pantry.
+
+F03 — Recipe Search
+Related Use Case: UC03 — Search Recipes Related Sequence Diagram: SD02
+
+Classes involved:
+
+MealPlannerGUI / MealPlannerCLI — collect the query and show results.
+SmartRecipeFacade — rejects an empty query and delegates.
+RecipeRepository — holds the recipes and searches them.
+Recipe — a result.
+Important methods: SmartRecipeFacade.searchRecipes(), RecipeRepository.search().
+
+Execution: The facade checks that the query is not empty, then calls RecipeRepository.search(query), which matches recipe names and ingredient names. The matching recipes are returned for display, or a "no recipes found" message is shown. No AI is used because ordinary search is deterministic and easy to test.
+
+F04 — AI Recipe Recommendation
+Related Use Case: UC04 — Get AI Recipe Recommendations Related Sequence Diagram: SD03
+
+Classes involved:
+
+SmartRecipeFacade — entry point.
+MealPlanningAgent — coordinates retrieval, strategy, AI call, validation and revision.
+RecipeRepository — supplies all recipes.
+RecipeSelectionStrategy (PantryFirstStrategy, FastestMealStrategy) — shortlists candidates.
+AIModel (AIAdapter → AIClient, or MockAIModel) — selects recipes from the shortlist.
+ConstraintValidator, ValidationResult — check each selected recipe.
+Important methods: SmartRecipeFacade.recommendRecipes(), MealPlanningAgent.recommend(), RecipeRepository.findAll(), RecipeSelectionStrategy.selectRecipes(), AIModel.generate(), ConstraintValidator.validateRecipe().
+
+Execution: The facade calls recommend(request, profile, pantry). The agent loads recipes, the strategy shortlists candidates, and generate(prompt) asks the AI to select from them. validateRecipe() inspects each recipe's ingredient list (not just its tags) against the profile and returns a ValidationResult. A recipe that is not in the repository is rejected. If there are violations, the agent calls generate() once more with the violation messages added. Valid recipes are returned; otherwise the failure is reported.
+
+F05 — AI Weekly Meal Planning
+Related Use Case: UC05 — Create Weekly Meal Plan Related Sequence Diagram: SD04
+
+Classes involved:
+
+SmartRecipeFacade, MealPlanningAgent, RecipeRepository, RecipeSelectionStrategy, AIModel — as in F04.
+MealPlan — composite holding the planned meals.
+PlannedMeal — leaf: one day, one recipe, a serving count.
+ConstraintValidator, ValidationResult — validate the whole plan.
+Important methods: SmartRecipeFacade.createMealPlan(), MealPlanningAgent.createPlan(), RecipeSelectionStrategy.selectRecipes(), AIModel.generate(), MealPlan.addMeal(), ConstraintValidator.validatePlan().
+
+Execution: The agent retrieves recipes, applies the strategy, and asks the AI to select one recipe per day. For each day it creates a PlannedMeal and adds it to a MealPlan. validatePlan() checks allergens, dislikes, diet, cooking time, one meal per day and 5 to 7 days. If the plan is invalid, the agent revises once with the violation messages. A valid plan becomes the current plan; otherwise failure is reported. This is the clearest example of agent behavior in the project.
+
+F06 — Meal Plan Editing and Undo
+Related Use Case: UC06 — Edit Meal Plan and Undo Changes Related Sequence Diagram: SD05
+
+Classes involved:
+
+SmartRecipeFacade — entry point; runs the command through CommandHistory.
+MealPlanningAgent — chooses the replacement and creates the command.
+AIModel, RecipeRepository, ConstraintValidator — selection and checking.
+ReplaceMealCommand — stores the day, the old meal and the new meal.
+CommandHistory — invoker holding the undo stack.
+MealPlan — receiver whose meal is replaced.
+Important methods: SmartRecipeFacade.editMealPlan(), undoLastChange(), MealPlanningAgent.editPlan(), ConstraintValidator.validateRecipe(), CommandHistory.execute(), undo(), canUndo(), MealPlan.replaceMeal().
+
+Execution: editPlan(request, plan, profile, pantry) asks the AI to pick a day and a replacement recipe from the repository, validates it, and returns a ReplaceMealCommand. The facade passes it to CommandHistory.execute(), which calls ReplaceMealCommand.execute() and then MealPlan.replaceMeal(day, newMeal). For undo, the facade checks canUndo() and calls CommandHistory.undo(), which calls ReplaceMealCommand.undo() and restores the old meal. Only meal replacement is undoable.
+
+F07 — Serving-Size Adjustment
+Related Use Case: UC07 — Adjust Serving Size Related Sequence Diagram: SD06
+
+Classes involved:
+
+SmartRecipeFacade — entry point and input check.
+ServingScaler — does the scaling.
+Recipe, RecipeIngredient — the data being scaled.
+Important methods: SmartRecipeFacade.adjustServings(), ServingScaler.scale().
+
+Execution: The facade rejects a serving count of zero or less, then calls scale(recipe, servings). The scaler multiplies every RecipeIngredient quantity by servings / recipe.servings and returns a new recipe with the new serving count. The operation is deterministic, so no LLM is used.
+
+F08 — Ingredient Substitution
+Related Use Case: UC08 — Substitute Ingredient Related Sequence Diagram: SD06
+
+Classes involved:
+
+SmartRecipeFacade — entry point.
+SubstitutionService — finds and applies a substitution from a predefined list.
+Substitution — original ingredient, substitute ingredient and conversion factor.
+UserProfile — allergies and preferences used for filtering.
+Recipe — the recipe being changed.
+Important methods: SmartRecipeFacade.substituteIngredient(), SubstitutionService.findSubstitute(), applySubstitution().
+
+Execution: findSubstitute(ingredient, profile) looks in the predefined list and removes substitutes that conflict with the profile. If one remains, applySubstitution(recipe, substitution) replaces the ingredient and scales its quantity by the conversion factor, returning a modified copy of the recipe. If none remains, the user is told no substitute is available. The AI is not involved.
+
+F09 — Nutrition Information
+Related Use Case: UC09 — Calculate Nutrition Related Sequence Diagram: SD06
+
+Classes involved:
+
+SmartRecipeFacade — entry point.
+NutritionService — calculates totals.
+PlanComponent, MealPlan, PlannedMeal — Composite used to total a plan.
+NutritionInfo — calories, protein, carbohydrates, fat.…
+…

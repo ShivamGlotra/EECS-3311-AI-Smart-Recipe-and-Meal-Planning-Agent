@@ -1,0 +1,277 @@
+@startuml SmartPlate_Final_ClassDiagram
+skinparam classAttributeIconSize 0
+skinparam roundcorner 5
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam nodesep 30
+skinparam ranksep 55
+
+title SmartPlate - Class Diagram (Stage 1)
+
+' ======================================================================
+' PRESENTATION
+' ======================================================================
+package "Presentation" {
+    class MealPlannerGUI {
+        + start()
+    }
+    class MealPlannerCLI {
+        + runLoop()
+    }
+}
+
+' ======================================================================
+' FACADE  (Pattern 1)
+' ======================================================================
+class SmartRecipeFacade <<Facade>> {
+    - currentPlan : MealPlan
+    + setupProfile(profile : UserProfile) : UserProfile
+    + managePantry(action : PantryAction, item : PantryItem) : Pantry
+    + searchRecipes(query : String) : List<Recipe>
+    + recommendRecipes(request : String) : List<Recipe>
+    + createMealPlan(request : String) : MealPlan
+    + editMealPlan(request : String) : MealPlan
+    + undoLastChange() : MealPlan
+    + adjustServings(recipe : Recipe, servings : int) : Recipe
+    + substituteIngredient(recipe : Recipe, ingredient : Ingredient) : Recipe
+    + calculateRecipeNutrition(recipe : Recipe) : NutritionInfo
+    + calculatePlanNutrition() : NutritionInfo
+    + generateShoppingList() : ShoppingList
+}
+MealPlannerGUI --> SmartRecipeFacade
+MealPlannerCLI --> SmartRecipeFacade
+
+' ======================================================================
+' DOMAIN
+' ======================================================================
+package "Domain" {
+    class UserProfile {
+        - dietaryPreferences : Set<String>
+        - allergies : Set<String>
+        - dislikedIngredients : Set<String>
+        - maxCookingTime : int
+        - defaultServings : int
+        + validate() : List<String>
+    }
+    class Ingredient {
+        - name : String
+        - category : String
+    }
+    class Pantry {
+        - items : List<PantryItem>
+        + addItem(item : PantryItem)
+        + removeItem(name : String)
+        + updateItem(item : PantryItem)
+        + findItem(name : String) : PantryItem
+    }
+    class PantryItem {
+        - quantity : double
+        - unit : String
+    }
+    class Recipe {
+        - id : String
+        - name : String
+        - cookingTime : int
+        - servings : int
+        - dietaryTags : Set<String>
+    }
+    class RecipeIngredient {
+        - quantity : double
+        - unit : String
+    }
+    class NutritionInfo {
+        - calories : double
+        - protein : double
+        - carbohydrates : double
+        - fat : double
+    }
+    class ShoppingList {
+        + addItem(item : ShoppingItem)
+        + consolidate()
+    }
+    class ShoppingItem {
+        - quantity : double
+        - unit : String
+    }
+    class Substitution {
+        - conversionFactor : double
+    }
+    enum PantryAction {
+        ADD
+        UPDATE
+        REMOVE
+    }
+}
+Pantry "1" *-- "0..*" PantryItem
+PantryItem --> "1" Ingredient
+Recipe "1" *-- "1..*" RecipeIngredient
+RecipeIngredient --> "1" Ingredient
+Recipe --> "1" NutritionInfo : per serving
+ShoppingList "1" *-- "0..*" ShoppingItem
+ShoppingItem --> "1" Ingredient
+Substitution --> "1" Ingredient : original
+Substitution --> "1" Ingredient : substitute
+
+' ======================================================================
+' MEAL PLAN  (Pattern 5: Composite)
+' ======================================================================
+package "Meal Plan (Composite)" {
+    interface PlanComponent <<Component>> {
+        + getNutrition() : NutritionInfo
+        + getIngredients() : List<RecipeIngredient>
+        + getCookingTime() : int
+    }
+    class MealPlan <<Composite>> {
+        - meals : List<PlannedMeal>
+        + addMeal(meal : PlannedMeal)
+        + removeMeal(day : String)
+        + replaceMeal(day : String, meal : PlannedMeal)
+        + getMeal(day : String) : PlannedMeal
+    }
+    class PlannedMeal <<Leaf>> {
+        - day : String
+        - servings : int
+    }
+}
+MealPlan ..|> PlanComponent
+PlannedMeal ..|> PlanComponent
+MealPlan "1" *-- "5..7" PlannedMeal
+PlannedMeal --> "1" Recipe
+
+' ======================================================================
+' AI MODEL  (Pattern 3: Adapter)
+' ======================================================================
+package "AI Model" {
+    interface AIModel <<Adapter target>> {
+        + generate(prompt : String) : String
+    }
+    class AIAdapter <<Adapter>> {
+        + generate(prompt : String) : String
+    }
+    class AIClient <<Adaptee>> {
+        + sendRequest(prompt : String) : String
+    }
+    class MockAIModel {
+        + generate(prompt : String) : String
+    }
+}
+AIAdapter ..|> AIModel
+MockAIModel ..|> AIModel
+AIAdapter --> "1" AIClient
+
+' ======================================================================
+' AGENT + VALIDATION
+' ======================================================================
+package "Agent" {
+    class MealPlanningAgent {
+        + setStrategy(strategy : RecipeSelectionStrategy)
+        + recommend(request : String, profile : UserProfile, pantry : Pantry) : List<Recipe>
+        + createPlan(request : String, profile : UserProfile, pantry : Pantry) : MealPlan
+        + editPlan(request : String, plan : MealPlan, profile : UserProfile, pantry : Pantry) : Command
+    }
+    class ConstraintValidator {
+        + validateRecipe(recipe : Recipe, profile : UserProfile) : ValidationResult
+        + validatePlan(plan : MealPlan, profile : UserProfile) : ValidationResult
+    }
+    class ValidationResult {
+        - violations : List<String>
+        + isValid() : boolean
+    }
+}
+
+' ======================================================================
+' STRATEGY  (Pattern 2)
+' ======================================================================
+package "Recipe Selection (Strategy)" {
+    interface RecipeSelectionStrategy <<Strategy>> {
+        + selectRecipes(recipes : List<Recipe>, profile : UserProfile, pantry : Pantry) : List<Recipe>
+    }
+    class PantryFirstStrategy
+    class FastestMealStrategy
+}
+PantryFirstStrategy ..|> RecipeSelectionStrategy
+FastestMealStrategy ..|> RecipeSelectionStrategy
+
+' ======================================================================
+' COMMAND  (Pattern 4)
+' ======================================================================
+package "Command" {
+    interface Command <<Command>> {
+        + execute()
+        + undo()
+    }
+    class ReplaceMealCommand {
+        - day : String
+        - oldMeal : PlannedMeal
+        - newMeal : PlannedMeal
+    }
+    class CommandHistory <<Invoker>> {
+        - undoStack : Stack<Command>
+        + execute(command : Command)
+        + undo()
+        + canUndo() : boolean
+    }
+}
+ReplaceMealCommand ..|> Command
+CommandHistory "1" o--> "*" Command
+ReplaceMealCommand --> "1" MealPlan : receiver
+
+' ======================================================================
+' SERVICES
+' ======================================================================
+package "Services" {
+    class RecipeRepository {
+        + search(query : String) : List<Recipe>
+        + findById(id : String) : Recipe
+        + findAll() : List<Recipe>
+    }
+    class NutritionService {
+        + calculateRecipe(recipe : Recipe) : NutritionInfo
+        + calculatePlan(plan : PlanComponent) : NutritionInfo
+    }
+    class ServingScaler {
+        + scale(recipe : Recipe, servings : int) : Recipe
+    }
+    class SubstitutionService {
+        + findSubstitute(ingredient : Ingredient, profile : UserProfile) : Substitution
+        + applySubstitution(recipe : Recipe, substitution : Substitution) : Recipe
+    }
+    class ShoppingListService {
+        + generate(plan : PlanComponent, pantry : Pantry) : ShoppingList
+    }
+}
+NutritionService ..> PlanComponent
+ShoppingListService ..> PlanComponent
+ShoppingListService ..> Pantry
+ShoppingListService ..> ShoppingList
+SubstitutionService "1" o--> "*" Substitution
+
+' ======================================================================
+' FACADE RELATIONSHIPS
+' ======================================================================
+SmartRecipeFacade --> "1" UserProfile
+SmartRecipeFacade --> "1" Pantry
+SmartRecipeFacade --> "1" RecipeRepository
+SmartRecipeFacade --> "1" MealPlanningAgent
+SmartRecipeFacade --> "1" NutritionService
+SmartRecipeFacade --> "1" ServingScaler
+SmartRecipeFacade --> "1" SubstitutionService
+SmartRecipeFacade --> "1" ShoppingListService
+SmartRecipeFacade --> "1" CommandHistory
+SmartRecipeFacade "1" o--> "0..1" MealPlan : current plan
+SmartRecipeFacade ..> Command : runs via CommandHistory
+
+' AGENT RELATIONSHIPS
+MealPlanningAgent --> "1" AIModel
+MealPlanningAgent --> "1" RecipeRepository
+MealPlanningAgent --> "1" ConstraintValidator : validates every AI answer
+MealPlanningAgent --> "1" RecipeSelectionStrategy
+MealPlanningAgent ..> ReplaceMealCommand : creates
+ConstraintValidator ..> ValidationResult
+
+note bottom of MealPlanningAgent
+  Flow: retrieve recipes -> strategy ranks candidates -> AIModel chooses ->
+  ConstraintValidator checks (using each recipe's ingredient list) ->
+  revise once with the violations -> otherwise report failure.
+end note
+@enduml

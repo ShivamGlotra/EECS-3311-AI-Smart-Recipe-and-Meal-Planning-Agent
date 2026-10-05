@@ -1,0 +1,54 @@
+@startuml
+title SD04 - AI Weekly Meal Plan Creation (F05 / UC05)
+
+actor User
+participant "MealPlannerGUI / MealPlannerCLI" as UI
+participant SmartRecipeFacade as Facade
+participant MealPlanningAgent as Agent
+participant RecipeRepository as Repository
+participant RecipeSelectionStrategy as Strategy
+participant AIModel as AI
+participant MealPlan as Plan
+participant PlannedMeal as Meal
+participant ConstraintValidator as Validator
+
+User -> UI : enter planning request
+UI -> Facade : createMealPlan(request)
+Facade -> Agent : createPlan(request, profile, pantry)
+Agent -> Repository : findAll()
+Repository --> Agent : List<Recipe>
+Agent -> Strategy : selectRecipes(recipes, profile, pantry)
+Strategy --> Agent : candidate recipes
+
+Agent -> AI : generate(prompt)
+alt AI service fails
+    AI --> Agent : error
+    Agent --> Facade : error
+    Facade --> UI : error
+    UI --> User : display message
+else AI responds
+    AI --> Agent : one recipe per day
+    loop each day
+        Agent -> Meal : create PlannedMeal(day, recipe, servings)
+        Agent -> Plan : addMeal(plannedMeal)
+    end
+    Agent -> Validator : validatePlan(plan, profile)
+    Validator --> Agent : ValidationResult
+    alt violations
+        Agent -> AI : generate(prompt + violation messages)
+        AI --> Agent : revised selection
+        Agent -> Plan : rebuild plan with addMeal(...)
+        Agent -> Validator : validatePlan(plan, profile)
+        Validator --> Agent : ValidationResult
+    end
+    alt valid plan
+        Agent --> Facade : MealPlan
+        Facade --> UI : MealPlan
+        UI --> User : display weekly plan
+    else no valid plan
+        Agent --> Facade : failure reported
+        Facade --> UI : error
+        UI --> User : display message
+    end
+end
+@enduml

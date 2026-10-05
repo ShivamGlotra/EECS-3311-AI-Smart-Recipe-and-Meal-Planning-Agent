@@ -1,0 +1,25 @@
+@startuml
+title SD02 - Recipe Search (F03 / UC03)
+
+actor User
+participant "MealPlannerGUI / MealPlannerCLI" as UI
+participant SmartRecipeFacade as Facade
+participant RecipeRepository as Repository
+
+User -> UI : enter search query
+UI -> Facade : searchRecipes(query)
+alt empty query
+    Facade --> UI : error
+    UI --> User : display message
+else valid query
+    Facade -> Repository : search(query)
+    Repository --> Facade : List<Recipe>
+    alt no matches
+        Facade --> UI : empty result
+        UI --> User : display "no recipes found"
+    else matches found
+        Facade --> UI : List<Recipe>
+        UI --> User : display recipes
+    end
+end
+@enduml

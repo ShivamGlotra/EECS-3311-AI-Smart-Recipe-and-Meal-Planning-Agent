@@ -1,0 +1,61 @@
+@startuml
+title SD05 - Edit Meal Plan and Undo (F06 / UC06)
+
+actor User
+participant "MealPlannerGUI / MealPlannerCLI" as UI
+participant SmartRecipeFacade as Facade
+participant MealPlanningAgent as Agent
+participant RecipeRepository as Repository
+participant AIModel as AI
+participant ConstraintValidator as Validator
+participant ReplaceMealCommand as Command
+participant CommandHistory as History
+participant MealPlan as Plan
+
+== Edit meal ==
+User -> UI : request meal change
+UI -> Facade : editMealPlan(request)
+Facade -> Agent : editPlan(request, plan, profile, pantry)
+Agent -> Repository : findAll()
+Repository --> Agent : List<Recipe>
+Agent -> AI : generate(prompt)
+AI --> Agent : day and replacement recipe
+alt day does not exist or no suitable replacement
+    Agent --> Facade : error
+    Facade --> UI : error
+    UI --> User : display message
+else replacement proposed
+    Agent -> Validator : validateRecipe(recipe, profile)
+    Validator --> Agent : ValidationResult
+    alt replacement violates constraints
+        Agent --> Facade : error
+        Facade --> UI : error
+        UI --> User : display message
+    else valid replacement
+        Agent -> Command : create(day, oldMeal, newMeal)
+        Agent --> Facade : ReplaceMealCommand
+        Facade -> History : execute(command)
+        History -> Command : execute()
+        Command -> Plan : replaceMeal(day, newMeal)
+        Facade --> UI : updated MealPlan
+        UI --> User : display updated plan
+    end
+end
+
+== Undo ==
+User -> UI : select Undo
+UI -> Facade : undoLastChange()
+Facade -> History : canUndo()
+alt nothing to undo
+    History --> Facade : false
+    Facade --> UI : error
+    UI --> User : display message
+else can undo
+    History --> Facade : true
+    Facade -> History : undo()
+    History -> Command : undo()
+    Command -> Plan : replaceMeal(day, oldMeal)
+    Facade --> UI : restored MealPlan
+    UI --> User : display restored plan
+end
+@enduml

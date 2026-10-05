@@ -1,0 +1,91 @@
+@startuml
+title SD06 - Recipe Utilities (F07, F08, F09, F10 / UC07 - UC10)
+
+actor User
+participant "MealPlannerGUI / MealPlannerCLI" as UI
+participant SmartRecipeFacade as Facade
+participant ServingScaler as Scaler
+participant SubstitutionService as Substitution
+participant NutritionService as Nutrition
+participant ShoppingListService as Shopping
+participant MealPlan as Plan
+participant PlannedMeal as Meal
+participant Pantry
+
+== F07 / UC07: Adjust servings ==
+User -> UI : select recipe, enter servings
+UI -> Facade : adjustServings(recipe, servings)
+alt servings <= 0 or invalid quantity
+    Facade --> UI : error
+    UI --> User : display error
+else valid
+    Facade -> Scaler : scale(recipe, servings)
+    Scaler --> Facade : scaled Recipe
+    Facade --> UI : scaled Recipe
+    UI --> User : display recipe
+end
+
+== F08 / UC08: Substitute ingredient ==
+User -> UI : select ingredient, request substitution
+UI -> Facade : substituteIngredient(recipe, ingredient)
+Facade -> Substitution : findSubstitute(ingredient, profile)
+alt no substitute exists or all conflict with profile
+    Substitution --> Facade : none
+    Facade --> UI : error
+    UI --> User : display message
+else substitute found
+    Substitution --> Facade : Substitution
+    Facade -> Substitution : applySubstitution(recipe, substitution)
+    Substitution --> Facade : updated Recipe
+    Facade --> UI : updated Recipe
+    UI --> User : display recipe
+end
+
+== F09 / UC09: Calculate nutrition ==
+alt nutrition of a recipe
+    User -> UI : select recipe
+    UI -> Facade : calculateRecipeNutrition(recipe)
+    Facade -> Nutrition : calculateRecipe(recipe)
+    Nutrition --> Facade : NutritionInfo
+else nutrition of the plan
+    User -> UI : select plan
+    UI -> Facade : calculatePlanNutrition()
+    Facade -> Nutrition : calculatePlan(plan)
+    Nutrition -> Plan : getNutrition()
+    loop each planned meal
+        Plan -> Meal : getNutrition()
+        Meal --> Plan : NutritionInfo
+    end
+    Plan --> Nutrition : NutritionInfo
+    Nutrition --> Facade : NutritionInfo
+end
+alt data missing or invalid
+    Facade --> UI : error
+    UI --> User : display message
+else success
+    Facade --> UI : NutritionInfo
+    UI --> User : display nutrition
+end
+
+== F10 / UC10: Generate shopping list ==
+User -> UI : select Generate Shopping List
+UI -> Facade : generateShoppingList()
+Facade -> Shopping : generate(plan, pantry)
+Shopping -> Plan : getIngredients()
+Plan -> Meal : getIngredients()
+Meal --> Plan : List<RecipeIngredient>
+Plan --> Shopping : List<RecipeIngredient>
+alt empty plan
+    Shopping --> Facade : error
+    Facade --> UI : error
+    UI --> User : display message
+else ingredients found
+    Shopping -> Shopping : consolidate duplicates
+    Shopping -> Pantry : findItem(name)
+    Pantry --> Shopping : PantryItem
+    Shopping -> Shopping : subtract pantry, keep missing quantities
+    Shopping --> Facade : ShoppingList
+    Facade --> UI : ShoppingList
+    UI --> User : display shopping list
+end
+@enduml

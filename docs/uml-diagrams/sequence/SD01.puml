@@ -1,0 +1,44 @@
+@startuml
+title SD01 - Preferences and Pantry (F01, F02 / UC01, UC02)
+
+actor User
+participant "MealPlannerGUI / MealPlannerCLI" as UI
+participant SmartRecipeFacade as Facade
+participant UserProfile as Profile
+participant Pantry
+participant PantryItem as Item
+
+== F01 / UC01: Manage preferences ==
+User -> UI : enter preferences
+UI -> Facade : setupProfile(profile)
+Facade -> Profile : validate()
+Profile --> Facade : List<String> problems
+alt problems found
+    Facade --> UI : error (previous valid profile kept)
+    UI --> User : display errors
+else no problems
+    Facade --> UI : updated UserProfile
+    UI --> User : display confirmation
+end
+
+== F02 / UC02: Manage pantry ==
+User -> UI : select add / update / remove, enter item
+UI -> Facade : managePantry(action, item)
+alt action = ADD
+    Facade -> Pantry : addItem(item)
+    Pantry -> Item : create PantryItem
+else action = UPDATE
+    Facade -> Pantry : updateItem(item)
+else action = REMOVE
+    Facade -> Pantry : removeItem(name)
+end
+alt not found, invalid quantity or invalid unit
+    Pantry --> Facade : error
+    Facade --> UI : error
+    UI --> User : display error
+else success
+    Pantry --> Facade : updated Pantry
+    Facade --> UI : updated Pantry
+    UI --> User : display pantry
+end
+@enduml
