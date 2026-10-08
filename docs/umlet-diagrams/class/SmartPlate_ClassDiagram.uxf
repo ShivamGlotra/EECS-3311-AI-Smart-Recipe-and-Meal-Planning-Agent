@@ -1,0 +1,201 @@
+<diagram program="umletino" version="15.1"><zoom_level>8</zoom_level><help_text>bg=#f5f5f5</help_text><element><id>UMLPackage</id><coordinates><x>0</x><y>48</y><w>776</w><h>568</h></coordinates><panel_attributes>Domain
+bg=#fafafa</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLPackage</id><coordinates><x>888</x><y>48</y><w>344</w><h>88</h></coordinates><panel_attributes>Presentation
+bg=#f5f5f5</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLPackage</id><coordinates><x>1408</x><y>48</y><w>504</w><h>456</h></coordinates><panel_attributes>Services
+bg=#f5f5f5</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLPackage</id><coordinates><x>768</x><y>672</y><w>568</w><h>352</h></coordinates><panel_attributes>Meal Plan (Composite)
+bg=#f5f5f5</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLPackage</id><coordinates><x>768</x><y>1104</y><w>616</w><h>304</h></coordinates><panel_attributes>Command
+bg=#f5f5f5</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLPackage</id><coordinates><x>1408</x><y>672</y><w>592</w><h>384</h></coordinates><panel_attributes>Agent
+bg=#f5f5f5</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLPackage</id><coordinates><x>2128</x><y>672</y><w>584</w><h>232</h></coordinates><panel_attributes>Recipe Selection (Strategy)
+bg=#f5f5f5</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLPackage</id><coordinates><x>2080</x><y>1016</y><w>584</w><h>392</h></coordinates><panel_attributes>AI Model
+bg=#f5f5f5</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLNote</id><coordinates><x>24</x><y>0</y><w>336</w><h>32</h></coordinates><panel_attributes>SmartPlate - Class Diagram (Stage 1)
+bg=#ffffcc</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>24</x><y>80</y><w>216</w><h>112</h></coordinates><panel_attributes>UserProfile
+--
+- dietaryPreferences : Set&lt;String&gt;
+- allergies : Set&lt;String&gt;
+- dislikedIngredients : Set&lt;String&gt;
+- maxCookingTime : int
+- defaultServings : int
+--
++ validate() : List&lt;String&gt;</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>24</x><y>240</y><w>232</w><h>104</h></coordinates><panel_attributes>Pantry
+--
+- items : List&lt;PantryItem&gt;
+--
++ addItem(item : PantryItem)
++ removeItem(name : String)
++ updateItem(item : PantryItem)
++ findItem(name : String) : PantryItem</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>296</x><y>80</y><w>168</w><h>96</h></coordinates><panel_attributes>Recipe
+--
+- id : String
+- name : String
+- cookingTime : int
+- servings : int
+- dietaryTags : Set&lt;String&gt;</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>296</x><y>224</y><w>128</w><h>56</h></coordinates><panel_attributes>RecipeIngredient
+--
+- quantity : double
+- unit : String</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>568</x><y>80</y><w>152</w><h>80</h></coordinates><panel_attributes>NutritionInfo
+--
+- calories : double
+- protein : double
+- carbohydrates : double
+- fat : double</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>568</x><y>224</y><w>192</w><h>56</h></coordinates><panel_attributes>ShoppingList
+--
++ addItem(item : ShoppingItem)
++ consolidate()</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>24</x><y>408</y><w>128</w><h>56</h></coordinates><panel_attributes>PantryItem
+--
+- quantity : double
+- unit : String</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>296</x><y>408</y><w>128</w><h>56</h></coordinates><panel_attributes>Ingredient
+--
+- name : String
+- category : String</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>568</x><y>408</y><w>128</w><h>56</h></coordinates><panel_attributes>ShoppingItem
+--
+- quantity : double
+- unit : String</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>296</x><y>536</y><w>168</w><h>40</h></coordinates><panel_attributes>Substitution
+--
+- conversionFactor : double</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>24</x><y>512</y><w>104</w><h>80</h></coordinates><panel_attributes>&lt;&lt;enumeration&gt;&gt;
+PantryAction
+--
+ADD
+UPDATE
+REMOVE</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>912</x><y>80</y><w>104</w><h>40</h></coordinates><panel_attributes>MealPlannerGUI
+--
++ start()</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1112</x><y>80</y><w>104</w><h>40</h></coordinates><panel_attributes>MealPlannerCLI
+--
++ runLoop()</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>872</x><y>208</y><w>432</w><h>216</h></coordinates><panel_attributes>&lt;&lt;Facade&gt;&gt;
+SmartRecipeFacade
+--
+- currentPlan : MealPlan
+--
++ setupProfile(profile : UserProfile) : UserProfile
++ managePantry(action : PantryAction, item : PantryItem) : Pantry
++ searchRecipes(query : String) : List&lt;Recipe&gt;
++ recommendRecipes(request : String) : List&lt;Recipe&gt;
++ createMealPlan(request : String) : MealPlan
++ editMealPlan(request : String) : MealPlan
++ undoLastChange() : MealPlan
++ adjustServings(recipe : Recipe, servings : int) : Recipe
++ substituteIngredient(recipe : Recipe, ingredient : Ingredient) : Recipe
++ calculateRecipeNutrition(recipe : Recipe) : NutritionInfo
++ calculatePlanNutrition() : NutritionInfo
++ generateShoppingList() : ShoppingList</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1432</x><y>80</y><w>320</w><h>56</h></coordinates><panel_attributes>NutritionService
+--
++ calculateRecipe(recipe : Recipe) : NutritionInfo
++ calculatePlan(plan : PlanComponent) : NutritionInfo</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1432</x><y>168</y><w>296</w><h>40</h></coordinates><panel_attributes>ServingScaler
+--
++ scale(recipe : Recipe, servings : int) : Recipe</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1432</x><y>248</y><w>464</w><h>56</h></coordinates><panel_attributes>SubstitutionService
+--
++ findSubstitute(ingredient : Ingredient, profile : UserProfile) : Substitution
++ applySubstitution(recipe : Recipe, substitution : Substitution) : Recipe</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1432</x><y>336</y><w>376</w><h>40</h></coordinates><panel_attributes>ShoppingListService
+--
++ generate(plan : PlanComponent, pantry : Pantry) : ShoppingList</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1432</x><y>416</y><w>240</w><h>72</h></coordinates><panel_attributes>RecipeRepository
+--
++ search(query : String) : List&lt;Recipe&gt;
++ findById(id : String) : Recipe
++ findAll() : List&lt;Recipe&gt;</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>832</x><y>704</y><w>264</w><h>96</h></coordinates><panel_attributes>&lt;&lt;interface&gt;&gt;
+&lt;&lt;Component&gt;&gt;
+PlanComponent
+--
++ getNutrition() : NutritionInfo
++ getIngredients() : List&lt;RecipeIngredient&gt;
++ getCookingTime() : int</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>792</x><y>888</y><w>280</w><h>112</h></coordinates><panel_attributes>&lt;&lt;Composite&gt;&gt;
+MealPlan
+--
+- meals : List&lt;PlannedMeal&gt;
+--
++ addMeal(meal : PlannedMeal)
++ removeMeal(day : String)
++ replaceMeal(day : String, meal : PlannedMeal)
++ getMeal(day : String) : PlannedMeal</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1208</x><y>888</y><w>112</w><h>72</h></coordinates><panel_attributes>&lt;&lt;Leaf&gt;&gt;
+PlannedMeal
+--
+- day : String
+- servings : int</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>792</x><y>1136</y><w>152</w><h>72</h></coordinates><panel_attributes>ReplaceMealCommand
+--
+- day : String
+- oldMeal : PlannedMeal
+- newMeal : PlannedMeal</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1192</x><y>1136</y><w>104</w><h>80</h></coordinates><panel_attributes>&lt;&lt;interface&gt;&gt;
+&lt;&lt;Command&gt;&gt;
+Command
+--
++ execute()
++ undo()</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1192</x><y>1288</y><w>176</w><h>104</h></coordinates><panel_attributes>&lt;&lt;Invoker&gt;&gt;
+CommandHistory
+--
+- undoStack : Stack&lt;Command&gt;
+--
++ execute(command : Command)
++ undo()
++ canUndo() : boolean</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1432</x><y>704</y><w>552</w><h>80</h></coordinates><panel_attributes>MealPlanningAgent
+--
++ setStrategy(strategy : RecipeSelectionStrategy)
++ recommend(request : String, profile : UserProfile, pantry : Pantry) : List&lt;Recipe&gt;
++ createPlan(request : String, profile : UserProfile, pantry : Pantry) : MealPlan
++ editPlan(request : String, plan : MealPlan, profile : UserProfile, pantry : Pantry) : Command</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1432</x><y>856</y><w>440</w><h>56</h></coordinates><panel_attributes>ConstraintValidator
+--
++ validateRecipe(recipe : Recipe, profile : UserProfile) : ValidationResult
++ validatePlan(plan : MealPlan, profile : UserProfile) : ValidationResult</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1432</x><y>976</y><w>168</w><h>64</h></coordinates><panel_attributes>ValidationResult
+--
+- violations : List&lt;String&gt;
+--
++ isValid() : boolean</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>2144</x><y>704</y><w>544</w><h>72</h></coordinates><panel_attributes>&lt;&lt;interface&gt;&gt;
+&lt;&lt;Strategy&gt;&gt;
+RecipeSelectionStrategy
+--
++ selectRecipes(recipes : List&lt;Recipe&gt;, profile : UserProfile, pantry : Pantry) : List&lt;Recipe&gt;</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>2144</x><y>864</y><w>128</w><h>24</h></coordinates><panel_attributes>PantryFirstStrategy</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>2344</x><y>864</y><w>128</w><h>24</h></coordinates><panel_attributes>FastestMealStrategy</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>2144</x><y>1048</y><w>224</w><h>72</h></coordinates><panel_attributes>&lt;&lt;interface&gt;&gt;
+&lt;&lt;Adapter target&gt;&gt;
+AIModel
+--
++ generate(prompt : String) : String</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>2096</x><y>1208</y><w>224</w><h>56</h></coordinates><panel_attributes>&lt;&lt;Adapter&gt;&gt;
+AIAdapter
+--
++ generate(prompt : String) : String</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>2096</x><y>1336</y><w>240</w><h>56</h></coordinates><panel_attributes>&lt;&lt;Adaptee&gt;&gt;
+AIClient
+--
++ sendRequest(prompt : String) : String</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>2416</x><y>1208</y><w>224</w><h>40</h></coordinates><panel_attributes>MockAIModel
+--
++ generate(prompt : String) : String</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLNote</id><coordinates><x>1512</x><y>1120</y><w>512</w><h>72</h></coordinates><panel_attributes>Flow: retrieve recipes -&gt; strategy ranks candidates -&gt; AIModel chooses -&gt;
+ConstraintValidator checks (using each recipe's ingredient list) -&gt;
+revise once with the violations -&gt; otherwise report failure.
+bg=#ffffcc</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>968</x><y>112</y><w>72</w><h>104</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>10;10;69;111</additional_attributes></element><element><id>Relation</id><coordinates><x>1112</x><y>112</y><w>56</w><h>104</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>45;10;10;111</additional_attributes></element><element><id>Relation</id><coordinates><x>88</x><y>344</y><w>48</w><h>80</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;-
+m1=1
+m2=0..*</panel_attributes><additional_attributes>37;10;10;79</additional_attributes></element><element><id>Relation</id><coordinates><x>144</x><y>424</y><w>168</w><h>32</h></coordinates><panel_attributes>lt=-&gt;
+m2=1</panel_attributes><additional_attributes>10;10;186;10</additional_attributes></element><element><id>Relation</id><coordinates><x>352</x><y>168</y><w>40</w><h>72</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;-
+m1=1
+m2=1..*</panel_attributes><additional_attributes>20;10;10;69</additional_attributes></element><element><id>Relation</id><coordinates><x>352</x><y>272</y><w>32</w><h>152</h></coordinates><panel_attributes>lt=-&gt;
+m2=1</panel_attributes><additional_attributes>10;10;10;163</additional_attributes></element><element><id>Relation</id><coordinates><x>456</x><y>104</y><w>120</w><h>40</h></coordinates><panel_attributes>lt=-&gt;
+m2=1
+r2=per serving</panel_attributes><additional_attributes>10;23;130;20</additional_attributes></element><element><id>Relation</id><coordinates><x>624</x><y>272</y><w>48</w><h>152</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;-
+m1=1
+m2=0..*</panel_attributes><additional_attributes>36;10;10;163</additional_attributes></element><element><id>Relation</id><coordinates><x>416</x><y>424</y><w>168</w><h>32</h></coordinates><panel_attributes>lt=-&gt;
+m2=1</panel_attributes><additional_attributes>186;10;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>320</x><y>456</y><w>56</w><h>96</h></coordinates><panel_attributes>lt=-&gt;
+m2=1
+r2=original</panel_attributes><additional_attributes>26;99;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>392</x><y>456</y><w>72</w><h>96</h></coordinates><panel_attributes>lt=-&gt;
+m2=1
+r2=substitute</panel_attributes><additional_attributes>26;99;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>936</x><y>792</y><w>40</w><h>112</h></coordinates><panel_attributes>lt=&lt;&lt;.</panel_attributes><additional_attributes>26;10;10;119</additional_attributes></element><element><id>Relation</id><coordinates><x>1040</x><y>792</y><w>184</w><h>120</h></coordinates><panel_attributes>lt=&lt;&lt;.</panel_attributes><additional_attributes>10;10;207;123</additional_attributes></element><element><id>Relation</id><coordinates><x>1064</x><y>920</y><w>152</w><h>40</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;-
+m1=1
+m2=5..7</panel_attributes><additional_attributes>10;21;170;10</additional_attributes></element><element><id>Relation</id><coordinates><x>424</x><y>168</y><w>816</w><h>736</h></coordinates><panel_attributes>lt=-&gt;
+m2=1</panel_attributes><additional_attributes>993;899;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>2208</x><y>1112</y><w>56</w><h>112</h></coordinates><panel_attributes>lt=&lt;&lt;.</panel_attributes><additional_attributes>44;10;10;119</additional_attributes></element><element><id>Relation</id><coordinates><x>2312</x><y>1112</y><w>192</w><h>112</h></coordinates><panel_attributes>lt=&lt;&lt;.</panel_attributes><additional_attributes>10;10;213;119</additional_attributes></element><element><id>Relation</id><coordinates><x>2200</x><y>1256</y><w>32</w><h>96</h></coordinates><panel_attributes>lt=-&gt;
+m2=1</panel_attributes><additional_attributes>10;10;16;99</additional_attributes></element><element><id>Relation</id><coordinates><x>2224</x><y>768</y><w>160</w><h>112</h></coordinates><panel_attributes>lt=&lt;&lt;.</panel_attributes><additional_attributes>178;10;10;119</additional_attributes></element><element><id>Relation</id><coordinates><x>2400</x><y>768</y><w>32</w><h>112</h></coordinates><panel_attributes>lt=&lt;&lt;.</panel_attributes><additional_attributes>18;10;10;119</additional_attributes></element><element><id>Relation</id><coordinates><x>936</x><y>1160</y><w>272</w><h>32</h></coordinates><panel_attributes>lt=&lt;&lt;.</panel_attributes><additional_attributes>318;15;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>1240</x><y>1208</y><w>40</w><h>96</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-&gt;
+m1=1
+m2=*</panel_attributes><additional_attributes>30;99;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>864</x><y>1000</y><w>96</w><h>152</h></coordinates><panel_attributes>lt=-&gt;
+m2=1
+r2=receiver</panel_attributes><additional_attributes>10;169;58;10</additional_attributes></element><element><id>Relation</id><coordinates><x>1000</x><y>128</y><w>576</w><h>592</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>697;10;10;714</additional_attributes></element><element><id>Relation</id><coordinates><x>1032</x><y>376</y><w>560</w><h>344</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>680;10;10;405</additional_attributes></element><element><id>Relation</id><coordinates><x>248</x><y>296</y><w>1200</w><h>80</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>1472;74;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>752</x><y>256</y><w>696</w><h>104</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>847;105;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>464</x><y>296</y><w>1080</w><h>264</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-&gt;
+m1=1
+m2=*</panel_attributes><additional_attributes>1330;10;10;302</additional_attributes></element><element><id>Relation</id><coordinates><x>232</x><y>144</y><w>656</w><h>144</h></coordinates><panel_attributes>lt=-&gt;
+m2=1</panel_attributes><additional_attributes>793;157;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>248</x><y>288</y><w>640</w><h>40</h></coordinates><panel_attributes>lt=-&gt;
+m2=1</panel_attributes><additional_attributes>772;25;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>1296</x><y>368</y><w>152</w><h>64</h></coordinates><panel_attributes>lt=-&gt;
+m2=1</panel_attributes><additional_attributes>10;10;168;57</additional_attributes></element><element><id>Relation</id><coordinates><x>1240</x><y>416</y><w>424</w><h>304</h></coordinates><panel_attributes>lt=-&gt;
+m2=1</panel_attributes><additional_attributes>10;10;509;353</additional_attributes></element><element><id>Relation</id><coordinates><x>1296</x><y>128</y><w>240</w><h>112</h></coordinates><panel_attributes>lt=-&gt;
+m2=1</panel_attributes><additional_attributes>10;121;280;10</additional_attributes></element><element><id>Relation</id><coordinates><x>1296</x><y>208</y><w>208</w><h>72</h></coordinates><panel_attributes>lt=-&gt;
+m2=1</panel_attributes><additional_attributes>10;67;239;10</additional_attributes></element><element><id>Relation</id><coordinates><x>1296</x><y>280</y><w>152</w><h>32</h></coordinates><panel_attributes>lt=-&gt;
+m2=1</panel_attributes><additional_attributes>10;21;167;10</additional_attributes></element><element><id>Relation</id><coordinates><x>1296</x><y>328</y><w>152</w><h>40</h></coordinates><panel_attributes>lt=-&gt;
+m2=1</panel_attributes><additional_attributes>10;10;168;23</additional_attributes></element><element><id>Relation</id><coordinates><x>1096</x><y>416</y><w>192</w><h>888</h></coordinates><panel_attributes>lt=-&gt;
+m2=1</panel_attributes><additional_attributes>10;10;214;1089</additional_attributes></element><element><id>Relation</id><coordinates><x>936</x><y>416</y><w>136</w><h>488</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-&gt;
+m1=1
+m2=0..1
+r2=current plan</panel_attributes><additional_attributes>149;10;10;585</additional_attributes></element><element><id>Relation</id><coordinates><x>1232</x><y>416</y><w>144</w><h>736</h></coordinates><panel_attributes>lt=.&gt;
+r2=runs via CommandHistory</panel_attributes><additional_attributes>14;10;10;892</additional_attributes></element><element><id>Relation</id><coordinates><x>1944</x><y>776</y><w>296</w><h>288</h></coordinates><panel_attributes>lt=-&gt;
+m2=1</panel_attributes><additional_attributes>10;10;346;335</additional_attributes></element><element><id>Relation</id><coordinates><x>1560</x><y>480</y><w>144</w><h>240</h></coordinates><panel_attributes>lt=-&gt;
+m2=1</panel_attributes><additional_attributes>153;275;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>1656</x><y>776</y><w>144</w><h>96</h></coordinates><panel_attributes>lt=-&gt;
+m2=1
+r2=validates every AI answer</panel_attributes><additional_attributes>45;10;10;99</additional_attributes></element><element><id>Relation</id><coordinates><x>1976</x><y>728</y><w>184</w><h>32</h></coordinates><panel_attributes>lt=-&gt;
+m2=1</panel_attributes><additional_attributes>10;11;209;10</additional_attributes></element><element><id>Relation</id><coordinates><x>912</x><y>776</y><w>552</w><h>376</h></coordinates><panel_attributes>lt=.&gt;
+r2=creates</panel_attributes><additional_attributes>663;10;10;443</additional_attributes></element><element><id>Relation</id><coordinates><x>1544</x><y>912</y><w>88</w><h>80</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>89;10;10;79</additional_attributes></element></diagram>

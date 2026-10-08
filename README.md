@@ -321,9 +321,9 @@ Missing quantities become ShoppingItems in the ShoppingList.
 Error/Alternative Cases: Empty meal plan; missing ingredient quantity; incompatible units (for example g and ml) are kept as separate lines. Supported units are g, kg, ml, l and pcs only.
 
 3. UML Class Diagram
-   [Class diagram source (PlantUML)](docs/uml-diagrams/class/class-diagram.puml)
+   [Class diagram source (Umlet)](docs/umlet-diagrams/class/SmartPlate_ClassDiagram.uxf)
 
-![UML Class Diagram](docs/uml-diagrams/class/class-diagram.png)
+![UML Class Diagram](docs/umlet-diagrams/class/SmartPlate_ClassDiagram.png)
 
 Design patterns shown in the diagram: Facade (SmartRecipeFacade), Adapter (AIModel, AIAdapter, AIClient), Strategy (RecipeSelectionStrategy and its two implementations), Command (Command, ReplaceMealCommand, CommandHistory) and Composite (PlanComponent, MealPlan, PlannedMeal). They are explained in Section 4.
 
@@ -407,9 +407,9 @@ User — primary actor.
 AI Service — external AI/LLM service used by the agent.
 The GUI and CLI are presentation channels, not separate actors. Both reach the same functionality through SmartRecipeFacade.
 
-[Use-case diagram source (PlantUML)](docs/uml-diagrams/use-case/use-case-diagram.puml)
+[Use-case diagram source (Umlet)](docs/umlet-diagrams/use-case/SmartPlate_UseCase.uxf)
 
-![UML Use-Case Diagram](docs/uml-diagrams/use-case/use-case-diagram.png)
+![UML Use-Case Diagram](docs/umlet-diagrams/use-case/SmartPlate_Usecase.png)
 
 @startuml
 left to right direction
@@ -607,36 +607,36 @@ SD04 AI Weekly Meal Plan F05 UC05
 SD05 Edit Meal Plan and Undo F06 UC06
 SD06 Recipe Utilities F07, F08, F09, F10 UC07–UC10
 SD01 — Preferences and Pantry (F01, F02)
-[Source](docs/uml-diagrams/sequence/SD01.puml)
+[Source](docs/umlet-diagrams/sequence/SD01_Preferences_Pantry.uxf)
 
-![SD01](docs/uml-diagrams/sequence/SD01.png)
+![SD01](docs/umlet-diagrams/sequence/SD01_Preferences_Pantry.png)
 
 SD02 — Recipe Search (F03)
-[Source](docs/uml-diagrams/sequence/SD02.puml)
+[Source](docs/umlet-diagrams/sequence/SD02_Recipe_Search.uxf)
 
-![SD02](docs/uml-diagrams/sequence/SD02.png)
+![SD02](docs/umlet-diagrams/sequence/SD02_Recipe_Search.png)
 
 SD03 — AI Recipe Recommendation (F04)
-[Source](docs/uml-diagrams/sequence/SD03.puml)
+[Source](docs/umlet-diagrams/sequence/SD03_AI_Recommendation.uxf)
 
-![SD03](docs/uml-diagrams/sequence/SD03.png)
+![SD03](docs/umlet-diagrams/sequence/SD03_AI_Recommendation.png)
 
 SD04 — AI Weekly Meal Plan Creation (F05)
-[Source](docs/uml-diagrams/sequence/SD04.puml)
+[Source](docs/umlet-diagrams/sequence/SD04_AI_Meal_Plan.uxf)
 
-![SD04](docs/uml-diagrams/sequence/SD04.png)
+![SD04](docs/umlet-diagrams/sequence/SD04_AI_Meal_Plan.png)
 
 This diagram shows the agent behavior: retrieve, shortlist, AI choice, build plan, validate, revise once, then return or report failure.
 
 SD05 — Edit Meal Plan and Undo (F06)
-[Source](docs/uml-diagrams/sequence/SD05.puml)
+[Source](docs/umlet-diagrams/sequence/SD05_Edit_Plan_Undo.uxf)
 
-![SD05](docs/uml-diagrams/sequence/SD05.png)
+![SD05](docs/umlet-diagrams/sequence/SD05_Edit_Plan_Undo.png)
 
 SD06 — Recipe Utilities (F07, F08, F09, F10)
-[Source](docs/uml-diagrams/sequence/SD06.puml)
+[Source](docs/umlet-diagrams/sequence/SD06_Recipe_Utilities.uxf)
 
-![SD06](docs/uml-diagrams/sequence/SD06.png)
+![SD06](docs/umlet-diagrams/sequence/SD06_Recipe_Utilities.png)
 
 8. Feature-to-Design Traceability Table
    Feature Description Type Use case Main classes Key methods Sequence Patterns
