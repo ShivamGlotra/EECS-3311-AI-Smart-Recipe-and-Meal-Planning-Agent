@@ -409,43 +409,8 @@ The GUI and CLI are presentation channels, not separate actors. Both reach the s
 
 [Use-case diagram source (Umlet)](docs/umlet-diagrams/use-case/SmartPlate_UseCase.uxf)
 
-![UML Use-Case Diagram](docs/umlet-diagrams/use-case/SmartPlate_Usecase.png)
+![UML Use-Case Diagram](docs/umlet-diagrams/use-case/SmartPlate_UseCase.png)
 
-@startuml
-left to right direction
-skinparam packageStyle rectangle
-
-actor User
-actor "AI Service" as AI
-
-rectangle "SmartPlate" {
-usecase "UC01\nManage Preferences" as UC01
-usecase "UC02\nManage Pantry" as UC02
-usecase "UC03\nSearch Recipes" as UC03
-usecase "UC04\nGet AI Recipe\nRecommendations" as UC04
-usecase "UC05\nCreate Weekly\nMeal Plan" as UC05
-usecase "UC06\nEdit Meal Plan\nand Undo Changes" as UC06
-usecase "UC07\nAdjust Serving Size" as UC07
-usecase "UC08\nSubstitute Ingredient" as UC08
-usecase "UC09\nCalculate Nutrition" as UC09
-usecase "UC10\nGenerate Shopping List" as UC10
-}
-
-User --> UC01
-User --> UC02
-User --> UC03
-User --> UC04
-User --> UC05
-User --> UC06
-User --> UC07
-User --> UC08
-User --> UC09
-User --> UC10
-
-UC04 --> AI
-UC05 --> AI
-UC06 --> AI
-@enduml
 Only UC04, UC05 and UC06 involve the AI Service. UC08 (substitution) is deterministic.
 
 6. Detailed Use-Case Descriptions
@@ -769,5 +734,103 @@ Classes involved:
 SmartRecipeFacade — entry point.
 NutritionService — calculates totals.
 PlanComponent, MealPlan, PlannedMeal — Composite used to total a plan.
-NutritionInfo — calories, protein, carbohydrates, fat.…
-…
+NutritionInfo — calories, protein, carbohydrates, fat.
+
+Important methods: SmartRecipeFacade.calculateRecipeNutrition(), calculatePlanNutrition(), NutritionService.calculateRecipe(), calculatePlan(), PlanComponent.getNutrition().
+
+Execution: For a recipe, calculateRecipe(recipe) returns its NutritionInfo. For a plan, calculatePlan(plan) calls getNutrition() on the plan; MealPlan asks each PlannedMeal, which returns its recipe's per-serving nutrition times its servings, and the results are summed. Missing data is reported as an error. The calculation is deterministic and testable.
+
+F10 — Shopping List Generation
+
+Related Use Case: UC10 — Generate Shopping List Related Sequence Diagram: SD06
+
+Classes involved:
+
+SmartRecipeFacade — entry point.
+ShoppingListService — builds the list.
+PlanComponent, MealPlan, PlannedMeal — supply the required ingredients.
+Pantry — stock to subtract.
+ShoppingList, ShoppingItem — the result.
+
+Important methods: SmartRecipeFacade.generateShoppingList(), ShoppingListService.generate(), PlanComponent.getIngredients(), Pantry.findItem(), ShoppingList.consolidate().
+
+Execution: generate(plan, pantry) calls getIngredients() once on the plan, which collects every RecipeIngredient. Duplicates are consolidated (converting only within g/kg, ml/l, or pcs). For each ingredient, the matching pantry quantity is subtracted and only the missing quantity becomes a ShoppingItem. An empty plan produces a message; ingredients with incompatible units stay on separate lines.
+
+Appendix A. AI Agent Behavior
+
+The LLM is not the entire application. It operates inside a controlled architecture.
+
+text
+User
+|
+v
+SmartRecipeFacade
+|
+v
+MealPlanningAgent
+|
++----> RecipeRepository
+|
++----> RecipeSelectionStrategy
+|
++----> AIModel (AIAdapter -> AIClient, or MockAIModel)
+|
++----> ConstraintValidator
+|
+v
+MealPlan / Recommendations
+Reasoning: the AI interprets the request and chooses among candidate recipes.
+Planning: the AI participates in building a multi-day plan.
+Decision making: the agent chooses according to the request and the selected strategy.
+Tool/data use: the agent reads the recipe repository, the user profile, and the pantry.
+Validation and revision: the AI's answer is never accepted blindly. ConstraintValidator checks it using each recipe's ingredient list. If there are violations, the agent revises once with the violation messages; otherwise it reports failure.
+Multi-step execution:
+text
+Request -> Retrieve recipes -> Select candidates -> AI selection -> Construct plan
+-> Validate -> Revise once if needed -> Return valid plan or report failure
+
+This is substantially more than User -> LLM -> Text.
+
+Appendix B. GUI and CLI
+
+MealPlannerGUI and MealPlannerCLI are the presentation classes in the class diagram. Both call only SmartRecipeFacade, so every feature is available in both and the behavior is identical.
+
+GUI screens: Preferences, Pantry, Recipe search, AI recommendations, Weekly meal plan (one dinner per day), Meal editing with Undo, Serving-size control, Ingredient substitution, Nutrition display, Shopping list.
+
+CLI commands (conceptual):
+
+text
+profile update
+pantry add | update | remove
+recipe search <query>
+recipe recommend "<request>"
+plan create "<request>"
+plan edit "<request>"
+plan undo
+recipe servings <recipe> <n>
+recipe substitute <recipe> <ingredient>
+nutrition recipe <recipe> | nutrition plan
+shopping generate
+text
+MealPlannerGUI MealPlannerCLI
+\ /
+v v
+SmartRecipeFacade
+Appendix C. Requirements Compliance
+Course requirement Design response
+GUI MealPlannerGUI provides access to all features
+CLI MealPlannerCLI provides access to all features
+At least 10 features 10 features, F01–F10
+At least 5 design patterns Facade, Adapter, Strategy, Command, Composite
+AI/LLM AIModel implemented by AIAdapter (→ AIClient) and MockAIModel
+Agent behavior Retrieval, strategy, AI selection, validation, revision, plan editing with undo
+Safety of AI output ConstraintValidator checks every AI answer using the recipe's ingredient list
+Class diagram Section 3
+Use-case diagram Section 5
+Use-case descriptions UC01–UC10
+Sequence diagrams SD01–SD06
+Feature traceability Section 8, F01–F10
+Feature realization Section 9, F01–F10
+AI/agent components in UML MealPlanningAgent, AIModel, AIAdapter, AIClient, MockAIModel
+External AI service AI Service actor in the use-case diagram
+Design-pattern explanations Section 4
