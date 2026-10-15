@@ -38,7 +38,8 @@ how that report was written.
 | Services and data | `service/*` | Yes | Includes the 30 sample recipes, starter pantry and 33 substitutions |
 | Facade | `facade/SmartRecipeFacade.java` | Yes | One method per feature, as in the diagram |
 | User interfaces | `presentation/*`, `app/*` | Yes | Swing GUI and CLI; both use only the facade |
-| Tests | `src/test/**` | Yes | 74 JUnit 5 tests |
+| GUI redesign ("Clean Slate", light mode) | `presentation/MealPlannerGUI.java`, `presentation/gui/**`, FlatLaf in `pom.xml` | Yes | Claude Code proposed three design directions as mockups; **the team chose Direction B**, and Claude Code then implemented it in Swing. The IBM Plex font files are IBM's (SIL Open Font License), not AI-generated. |
+| Tests | `src/test/**` | Yes | 88 JUnit 5 tests (14 of them for the GUI) |
 | Documentation | `docs/IMPLEMENTATION.md`, this file | Yes | Code explanation and this disclosure |
 
 **Sample data caveat:** the recipes, quantities and nutrition values in `SampleData.java` were made
@@ -54,10 +55,10 @@ These checks were run during generation and can be repeated by anyone:
 | Check | How to repeat | Result at time of writing |
 |---|---|---|
 | Compiles | `mvn compile` | Success |
-| Unit tests | `mvn test` | 74 tests, 0 failures, 0 errors |
+| Unit tests | `mvn test` | 88 tests, 0 failures, 0 errors |
 | Runnable jar | `mvn package` then `java -jar target/smartplate-1.0.0.jar --cli` | Starts; commands work |
 | Scripted CLI session covering F01–F10 | See `MealPlannerCLITest` and the session in `docs/IMPLEMENTATION.md` §1 | Expected output |
-| GUI | Launched on a virtual display; "Create weekly plan" clicked | Works; screenshot in `docs/screenshots/` |
+| GUI | Launched on a virtual display and driven through every state (empty, error, plan, edit, shopping list, nutrition, recipes, pantry error, preferences error) | Works; screenshots in `docs/screenshots/`. One bug was found by the new GUI tests and fixed (the pantry "Added …" message was cleared by the row selection). |
 | Agent revision behavior | `MealPlanningAgentTest` (scripted bad AI answers) | Invented ids and constraint violations are rejected; exactly one revision; failure reported after that |
 
 **Not verified:** the live call to the real Claude API (`AIAdapter` → `AIClient`). No API key was

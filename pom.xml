@@ -17,6 +17,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.10.2</junit.version>
         <anthropic.version>2.34.0</anthropic.version>
+        <flatlaf.version>3.7.2</flatlaf.version>
         <main.class>com.smartplate.app.SmartPlateApp</main.class>
     </properties>
 
@@ -26,6 +27,13 @@
             <groupId>com.anthropic</groupId>
             <artifactId>anthropic-java</artifactId>
             <version>${anthropic.version}</version>
+        </dependency>
+
+        <!-- FlatLaf: modern light look-and-feel for the Swing GUI (presentation layer only). -->
+        <dependency>
+            <groupId>com.formdev</groupId>
+            <artifactId>flatlaf</artifactId>
+            <version>${flatlaf.version}</version>
         </dependency>
 
         <dependency>

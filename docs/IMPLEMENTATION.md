@@ -12,7 +12,7 @@ runs through the code.
 Requirements: **Java 17+** and **Maven 3.8+**. No other installation is needed.
 
 ```bash
-mvn test                 # compile and run the 74 JUnit 5 tests
+mvn test                 # compile and run the 88 JUnit 5 tests
 mvn package              # builds target/smartplate-1.0.0.jar (includes all dependencies)
 
 java -jar target/smartplate-1.0.0.jar          # desktop GUI (falls back to the CLI if there is no display)
@@ -51,13 +51,31 @@ read from the environment and never appears in the source code. **Everything wor
 
 Type `help` for the full list of commands.
 
-### GUI
+### GUI ("Clean Slate" design, light mode)
 
-![GUI after "Create weekly plan"](screenshots/gui-weekly-plan.png)
+![AI Assistant after editing Tuesday](screenshots/gui-plan-edited.png)
 
-The GUI has four tabs: **AI Assistant** (F04, F05, F06, F09 and F10 for the plan), **Recipes** (F03,
-F07, F08, F09 for a recipe), **Pantry** (F02) and **Preferences** (F01). The *Agent trace* panel
-shows what the agent did for the last AI request, including any rejected answers and revisions.
+The GUI has four tabs, matching the screens listed in the Stage 1 report (Appendix B):
+
+| Tab | Features | What you see |
+|---|---|---|
+| **AI Assistant** | F04, F05, F06, F09 + F10 for the plan | Request bar (Recommend, Create weekly plan, Edit plan, Undo), the plan table, a **Result** panel and an **Agent trace** panel. After an edit the changed day is tinted with a `CHANGED` tag and the Result shows *before → now*. **Plan nutrition** and **Shopping list** swap the right-hand panel. Double-click a day to start a swap request. |
+| **Recipes** | F03, F07, F08, F09 | Search + results table; the selected recipe with Servings + Scale, Ingredient + Substitute, nutrition (total and per serving) and steps. A scaled or substituted recipe is a **working copy** (badge) until you press Reset. |
+| **Pantry** | F02 | Pantry table and an Add / Update / Remove form; errors appear under the form and outline the field they belong to. |
+| **Preferences** | F01 | Diet checkboxes, allergies, dislikes, max cooking time, servings. Problems from `UserProfile.validate()` are listed in a red banner and next to their field; the previous profile stays active. |
+
+The tab bar also holds the **Strategy** selector (pantry-first / fastest) and a badge showing the AI
+model in use. More screenshots: [first launch + error](screenshots/gui-first-launch-error.png),
+[weekly plan](screenshots/gui-weekly-plan.png), [shopping list](screenshots/gui-shopping-list.png),
+[plan nutrition](screenshots/gui-plan-nutrition.png), [recipes](screenshots/gui-recipes.png),
+[pantry](screenshots/gui-pantry.png), [preferences](screenshots/gui-preferences.png).
+
+How it is built: `MealPlannerGUI` (the presentation class in the class diagram) builds the window;
+each tab is a panel in `presentation/gui/` (`AssistantPanel`, `RecipesPanel`, `PantryPanel`,
+`PreferencesPanel`) and they all call **only `SmartRecipeFacade`**. The look comes from
+[FlatLaf](https://www.formdev.com/flatlaf/) (a Swing look-and-feel library) configured in
+`gui/Theme.java`, plus the bundled IBM Plex fonts (`src/main/resources/fonts`, SIL Open Font
+License). AI requests run on a background thread (`TaskRunner`) so the window never freezes.
 
 ---
 
@@ -68,6 +86,8 @@ pom.xml
 src/main/java/com/smartplate/
 ├── app/            SmartPlateApp            entry point; picks the AI model; starts GUI or CLI
 ├── presentation/   MealPlannerGUI, MealPlannerCLI                          (Presentation layer)
+│   └── gui/        AssistantPanel, RecipesPanel, PantryPanel, PreferencesPanel (one per tab),
+│                   Theme, Ui, AlertBox, RoundedPanel, Icons, TaskRunner     (GUI building blocks)
 ├── facade/         SmartRecipeFacade                                       (Application layer, Facade)
 ├── agent/          MealPlanningAgent, ConstraintValidator, ValidationResult, RequestConstraints
 ├── ai/             AIModel, AIAdapter, AIClient, MockAIModel, PromptFormat, AIServiceException   (Adapter)
@@ -79,7 +99,8 @@ src/main/java/com/smartplate/
 │                   Units, DietRules, SmartPlateException, InvalidProfileException  (Domain layer)
 └── service/        RecipeRepository (Data layer), NutritionService, ServingScaler,
                     SubstitutionService, ShoppingListService, SampleData
-src/test/java/com/smartplate/   15 JUnit 5 test classes, 74 tests
+src/main/resources/fonts/       IBM Plex Sans / Mono (SIL Open Font License, OFL.txt)
+src/test/java/com/smartplate/   16 JUnit 5 test classes, 88 tests
 ```
 
 Each package matches a package in the class diagram (`docs/uml-diagrams/class/class-diagram.puml`).
@@ -116,7 +137,8 @@ MealPlannerGUI / MealPlannerCLI          (only talk to the facade)
 `SmartRecipeFacade.create(aiModel)` wires the whole subsystem together.
 
 Errors are reported in one way: every expected problem throws a `SmartPlateException` whose
-message can be shown to the user. The CLI prints it as `Error: ...` and the GUI shows a dialog.
+message can be shown to the user. The CLI prints it as `Error: ...`; the GUI shows it in a red
+message box (and, on forms, next to the field it is about).
 
 ### 3.2 Adapter — `ai/AIModel.java`, `ai/AIAdapter.java`, `ai/AIClient.java`, `ai/MockAIModel.java`
 
@@ -316,7 +338,7 @@ Each feature lists its entry point, the classes involved, and where its tests ar
 mvn test
 ```
 
-* 74 tests in 15 classes. They cover every feature, every pattern, and the main error flows from
+* 88 tests in 16 classes. They cover every feature, every pattern, and the main error flows from
   the use-case descriptions.
 * All tests use `MockAIModel`, so they need no network or API key and always give the same result.
 * `MealPlanningAgentTest` uses scripted answers to test the agent's behavior: rejecting invented
@@ -324,6 +346,9 @@ mvn test
   service failures.
 * `SmartRecipeFacadeTest.f04ToF10FullWorkflow` runs the whole workflow through the facade.
 * `MealPlannerCLITest` runs a scripted CLI session and checks that errors are shown, not thrown.
+* `GuiPanelsTest` drives the four GUI tabs headlessly: the empty state, the rejected-request
+  error (with "nothing was sent to the AI"), create → edit (CHANGED day) → undo, the shopping list
+  and nutrition views, recipe working copies, and field-level errors on Pantry and Preferences.
 
 ---
 
@@ -343,3 +368,5 @@ changes a pattern or a sequence diagram.
 | `CommandHistory` uses `ArrayDeque` | Java's recommended stack class (the diagram says `Stack<Command>`). |
 | Extra query methods on the facade (`getProfile`, `getPantry`, `getCurrentPlan`, `getRecipe`, `setStrategy`, `getLastAgentTrace`, ...) | The UIs need to read state. They still go through the facade only. |
 | `UserProfile` stores the entries as typed | So `validate()` can report duplicates and malformed entries. The getters return cleaned sets. |
+| `presentation/gui/*` helper classes behind `MealPlannerGUI` | One panel per tab plus small UI building blocks (theme, cards, alerts, icons). `MealPlannerGUI` is still the presentation class from the diagram and the only one `SmartPlateApp` starts; the panels call only the facade. |
+| FlatLaf dependency and bundled IBM Plex fonts | Give the Swing GUI the agreed light "Clean Slate" design without changing any non-GUI code. |
