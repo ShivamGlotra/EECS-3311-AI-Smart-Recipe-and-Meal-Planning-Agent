@@ -3,6 +3,7 @@
 > (add `--cli` for the command line). It runs offline with a mock AI; set `ANTHROPIC_API_KEY` to use Claude.
 > - Code explanation: [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)
 > - Where AI helped (disclosure for the instructor): [docs/AI_USAGE.md](docs/AI_USAGE.md)
+> - Developer guide (structure, every function, how to change and debug): [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)
 
 EECS3311 Fall 2026 — Stage 1 Project Design Report
 SmartPlate: AI Smart Recipe and Meal Planning Agent
