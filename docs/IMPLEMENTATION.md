@@ -12,7 +12,7 @@ runs through the code.
 Requirements: **Java 17+** and **Maven 3.8+**. No other installation is needed.
 
 ```bash
-mvn test                 # compile and run the 99 JUnit 5 tests
+mvn test                 # compile and run the 112 JUnit 5 tests
 mvn package              # builds target/smartplate-1.0.0.jar (includes all dependencies)
 
 java -jar target/smartplate-1.0.0.jar          # desktop GUI (falls back to the CLI if there is no display)
@@ -29,24 +29,34 @@ You can also run it without packaging: `mvn -q compile exec:java -Dexec.args="--
 
 | `SMARTPLATE_AI_PROVIDER` | AI model used |
 |---|---|
-| not set, or `auto` (default) | `AIAdapter` → Claude if `ANTHROPIC_API_KEY` is set, otherwise `MockAIModel` (offline, no network, no cost) |
+| not set, or `auto` (default) | Claude if `ANTHROPIC_API_KEY` is set, else Gemini if `GEMINI_API_KEY` is set, otherwise `MockAIModel` (offline, no network, no cost) |
 | `mock` | `MockAIModel` |
 | `anthropic` | `AIAdapter` → `AIClient` → Claude through the official Anthropic Java SDK (needs `ANTHROPIC_API_KEY`) |
+| `gemini` | `GeminiAdapter` → Google Gemini's REST API (needs `GEMINI_API_KEY`) |
 | `ollama` | `OllamaAdapter` → a local model served by [Ollama](https://ollama.com) |
 | anything else | the app prints an error and stops |
 | `--mock` flag | `MockAIModel`, whatever the variable says |
 
-Optional settings: `SMARTPLATE_AI_MODEL` (Claude model id, default `claude-opus-5-5`), `OLLAMA_MODEL`
-(default `llama3.2`) and `OLLAMA_URL` (default `http://localhost:11434`). Ollama is never picked by
-`auto`, so a local server that happens to be running cannot change the behavior silently. The API
-key is only read from the environment and never appears in the source code. **Everything works
+Optional settings: `SMARTPLATE_AI_MODEL` (Claude model id, default `claude-opus-5-5`), `GEMINI_MODEL`
+(default `gemini-flash-latest`, Google's alias for its newest Flash model), `OLLAMA_MODEL` (default
+`llama3.2`) and `OLLAMA_URL` (default `http://localhost:11434`). Ollama is never picked by `auto`, so
+a local server that happens to be running cannot change the behavior silently. **Everything works
 without a key.**
+
+**Where the API keys go:** copy `.env.example` to `.env` in the project folder and fill it in
+(`ai/EnvFile.java` reads it, like `dotenv` in Node). `.env` is git-ignored, so keys are never pushed
+and never appear in the source code. Real environment variables override the file.
+
+**Switching while the app runs:** the **AI model** box at the top right of the window lists Mock,
+Claude, Gemini and Ollama. Choosing one calls `SmartRecipeFacade.setAIProvider`, which re-reads `.env`
+(so a key added there works without a restart). If the key is missing, the previous model stays,
+the box is outlined in red and a message says which variable to set.
 
 To use a local model:
 
 ```bash
-ollama pull llama3.2                       # once; any chat model works, e.g. qwen2.5:7b
-SMARTPLATE_AI_PROVIDER=ollama OLLAMA_MODEL=llama3.2 java -jar target/smartplate-1.0.0.jar
+ollama pull gemma4:e4b                     # once; any chat model works, e.g. llama3.2, qwen2.5:7b
+SMARTPLATE_AI_PROVIDER=ollama OLLAMA_MODEL=gemma4:e4b java -jar target/smartplate-1.0.0.jar
 ```
 
 ### A quick CLI session
@@ -79,8 +89,8 @@ The GUI has four tabs, matching the screens listed in the Stage 1 report (Append
 | **Pantry** | F02 | Pantry table and an Add / Update / Remove form; errors appear under the form and outline the field they belong to. |
 | **Preferences** | F01 | Diet checkboxes, allergies, dislikes, max cooking time, servings. Problems from `UserProfile.validate()` are listed in a red banner and next to their field; the previous profile stays active. |
 
-The tab bar also holds the **Strategy** selector (pantry-first / fastest) and a badge showing the AI
-model in use. More screenshots: [first launch + error](screenshots/gui-first-launch-error.png),
+The tab bar also holds the **Strategy** selector (pantry-first / fastest) and the **AI model**
+selector (Mock / Claude / Gemini / Ollama), which shows the exact model in use. More screenshots: [first launch + error](screenshots/gui-first-launch-error.png),
 [weekly plan](screenshots/gui-weekly-plan.png), [shopping list](screenshots/gui-shopping-list.png),
 [plan nutrition](screenshots/gui-plan-nutrition.png), [recipes](screenshots/gui-recipes.png),
 [pantry](screenshots/gui-pantry.png), [preferences](screenshots/gui-preferences.png).
@@ -115,7 +125,7 @@ src/main/java/com/smartplate/
 └── service/        RecipeRepository (Data layer), NutritionService, ServingScaler,
                     SubstitutionService, ShoppingListService, SampleData
 src/main/resources/fonts/       IBM Plex Sans / Mono (SIL Open Font License, OFL.txt)
-src/test/java/com/smartplate/   18 JUnit 5 test classes, 99 tests
+src/test/java/com/smartplate/   20 JUnit 5 test classes, 112 tests
 ```
 
 Each package matches a package in the class diagram (`docs/umlet-diagrams/class/SmartPlate_ClassDiagram.uxf`).
@@ -155,7 +165,7 @@ Errors are reported in one way: every expected problem throws a `SmartPlateExcep
 message can be shown to the user. The CLI prints it as `Error: ...`; the GUI shows it in a red
 message box (and, on forms, next to the field it is about).
 
-### 3.2 Adapter — `ai/AIModel.java`, `ai/AIAdapter.java`, `ai/AIClient.java`, `ai/OllamaAdapter.java`, `ai/MockAIModel.java`
+### 3.2 Adapter — `ai/AIModel.java`, `ai/AIAdapter.java`, `ai/AIClient.java`, `ai/GeminiAdapter.java`, `ai/OllamaAdapter.java`, `ai/MockAIModel.java`
 
 | Role | Class | What it does |
 |---|---|---|
@@ -163,12 +173,13 @@ message box (and, on forms, next to the field it is about).
 | Adapter | `AIAdapter` | Turns a prompt into the SDK's `MessageCreateParams` (`buildRequest`), and the SDK's `Message` back into plain text (`extractText`). Turns SDK exceptions into `AIServiceException`. |
 | Adaptee | `AIClient` | Provider-specific client. `sendRequest(MessageCreateParams) : Message`, built on the official Anthropic Java SDK. Reads the key and model from the environment. |
 | Second adapter | `OllamaAdapter` | Same idea for a local model: turns a prompt into Ollama's `/api/chat` JSON (`buildRequestBody`) and the JSON reply back into text (`extractText`), using the JDK's `HttpClient`. HTTP and connection errors become `AIServiceException`. |
+| Third adapter | `GeminiAdapter` | The same for Google Gemini: the prompt becomes a `generateContent` JSON request (`buildRequestBody`), the reply's text parts become the answer (`extractText`). The key travels in the `x-goog-api-key` header. Bad key, unknown model, rate limit and blocked prompts become `AIServiceException`. |
 | Alternative target implementation | `MockAIModel` | Offline model with the same interface (see 4.3) |
 | Client | `MealPlanningAgent` | Holds an `AIModel`; never sees SDK types |
-| Chooser | `AIModelFactory` | Picks one implementation from `SMARTPLATE_AI_PROVIDER` (see §1). `SmartPlateApp` calls it once at start-up. |
+| Chooser | `AIModelFactory` | Picks one implementation from `SMARTPLATE_AI_PROVIDER` (see §1). `SmartPlateApp` calls it once at start-up; the GUI's AI model box calls it again (through the facade) to switch at run time. |
 
-`OllamaAdapter` shows the point of the pattern: a second provider was added without changing
-`MealPlanningAgent`, the facade or the UI.
+`OllamaAdapter` and `GeminiAdapter` show the point of the pattern: two providers were added without
+changing how `MealPlanningAgent` works. The agent only gained `setAIModel`, so the model can be swapped while the app runs.
 
 ### 3.3 Strategy — `strategy/*`
 
@@ -320,6 +331,9 @@ reported in plain words: Ollama not running ("Is it running (ollama serve)?"), m
 ("Run: ollama pull <model>"), timeout (180 s; the first call can be slow while the model loads),
 or an empty answer.
 
+`GeminiAdapter` sends the same system prompt as `systemInstruction` and the prompt as the user
+content. Gemini's thinking models may return "thought" parts; only the answer parts are used.
+
 ---
 
 ## 5. Feature walkthroughs
@@ -364,11 +378,13 @@ Each feature lists its entry point, the classes involved, and where its tests ar
 mvn test
 ```
 
-* 99 tests in 18 classes. They cover every feature, every pattern, and the main error flows from
+* 112 tests in 20 classes. They cover every feature, every pattern, and the main error flows from
   the use-case descriptions.
 * All tests use `MockAIModel`, so they need no network or API key and always give the same result.
   `OllamaAdapterTest` runs the Ollama adapter against a small fake Ollama server inside the test
-  (no real model needed), and `AIModelFactoryTest` checks every `SMARTPLATE_AI_PROVIDER` value.
+  (no real model needed), `GeminiAdapterTest` does the same with a fake Gemini server (no key
+  needed), `AIModelFactoryTest` checks every `SMARTPLATE_AI_PROVIDER` value, and `EnvFileTest`
+  checks the `.env` file reading.
 * `MealPlanningAgentTest` uses scripted answers to test the agent's behavior: rejecting invented
   ids, revising once with the violation messages, failing after one revision, and reporting AI
   service failures.

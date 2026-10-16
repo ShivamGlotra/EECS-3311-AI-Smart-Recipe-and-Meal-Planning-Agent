@@ -9,8 +9,8 @@ design patterns, how to change things, and how to find and fix bugs.
 > little; search for the function name instead (in IntelliJ: `Ctrl+F12` / `Cmd+F12` lists every
 > method in a file).
 >
-> **Short paths.** `agent/MealPlanningAgent.java:87` means
-> `src/main/java/com/smartplate/agent/MealPlanningAgent.java`, line 87. Test files are under
+> **Short paths.** `agent/MealPlanningAgent.java:95` means
+> `src/main/java/com/smartplate/agent/MealPlanningAgent.java`, line 95. Test files are under
 > `src/test/java/com/smartplate/`.
 
 ---
@@ -181,7 +181,7 @@ the facade.
 
 ```bash
 mvn compile                          # compile only (like tsc)
-mvn test                             # run all 99 tests
+mvn test                             # run all 112 tests
 mvn package                          # build target/smartplate-1.0.0.jar (includes all libraries)
 java -jar target/smartplate-1.0.0.jar            # open the desktop app
 java -jar target/smartplate-1.0.0.jar --cli      # command-line version
@@ -191,15 +191,21 @@ mvn test -Dtest=MealPlanningAgentTest            # run one test class
 mvn test -Dtest=GuiPanelsTest#createEditAndUndoMarkTheChangedDay   # run one test
 ```
 
-**Which AI:** the environment variable `SMARTPLATE_AI_PROVIDER` decides (read by `ai/AIModelFactory.java`):
-`auto` (default: Claude if `ANTHROPIC_API_KEY` is set, else the offline `MockAIModel`), `mock`,
-`anthropic`, or `ollama` (a local model; optional `OLLAMA_MODEL`, default `llama3.2`, and `OLLAMA_URL`,
-default `http://localhost:11434`). `SMARTPLATE_AI_MODEL` changes the Claude model id. It's like
-`process.env` in Node:
+**Which AI:** the setting `SMARTPLATE_AI_PROVIDER` picks the model at start-up (read by `ai/AIModelFactory.java`):
+`auto` (default: Claude if `ANTHROPIC_API_KEY` is set, else Gemini if `GEMINI_API_KEY` is set, else the
+offline `MockAIModel`), `mock`, `anthropic`, `gemini` (optional `GEMINI_MODEL`, default
+`gemini-flash-latest`), or `ollama` (a local model; optional `OLLAMA_MODEL`, default `llama3.2`, and
+`OLLAMA_URL`, default `http://localhost:11434`). `SMARTPLATE_AI_MODEL` changes the Claude model id.
+In the window you can also switch model with the **AI model** box at the top right.
+
+**API keys go in a `.env` file**, exactly like `dotenv` in Node: copy `.env.example` to `.env` in the
+project folder and fill it in. `.env` is git-ignored, so it is never pushed. Real environment
+variables override it:
 ```bash
-SMARTPLATE_AI_PROVIDER=ollama OLLAMA_MODEL=qwen2.5:7b java -jar target/smartplate-1.0.0.jar
+cp .env.example .env        # then edit .env: GEMINI_API_KEY=..., OLLAMA_MODEL=gemma4:e4b, ...
+SMARTPLATE_AI_PROVIDER=ollama OLLAMA_MODEL=gemma4:e4b java -jar target/smartplate-1.0.0.jar   # one-off override
 ```
-In IntelliJ, set them in *Run → Edit Configurations → Environment variables*.
+IntelliJ runs the app from the project folder, so it finds `.env` too.
 
 **IntelliJ:**
 - File → Open → choose `pom.xml` → *Open as Project*. Set File → Project Structure → SDK = 21.
@@ -207,8 +213,8 @@ In IntelliJ, set them in *Run → Edit Configurations → Environment variables*
   Add `--cli` in *Run → Edit Configurations → Program arguments* for the CLI.
 - **Debug:** click in the gutter next to a line number to add a red breakpoint, then use the 🐞
   button instead of ▶. The program pauses there and you can inspect every variable (like Chrome
-  DevTools breakpoints). Good breakpoints: `SmartRecipeFacade.createMealPlan` (:129),
-  `MealPlanningAgent.createPlan` (:146), `ConstraintValidator.validateRecipe` (:23).
+  DevTools breakpoints). Good breakpoints: `SmartRecipeFacade.createMealPlan` (:143),
+  `MealPlanningAgent.createPlan` (:154), `ConstraintValidator.validateRecipe` (:23).
 - Run a test: open the test file and click ▶ next to the class or method.
 
 ---
@@ -240,7 +246,9 @@ src/main/java/com/smartplate/
     AIAdapter.java                    ADAPTER: turns a prompt into an Anthropic API request and back
     AIClient.java                     ADAPTEE: the real Anthropic SDK client (API key from env var)
     OllamaAdapter.java                ADAPTER #2: a local model through Ollama's /api/chat (JDK HttpClient)
-    AIModelFactory.java               picks mock / anthropic / ollama from SMARTPLATE_AI_PROVIDER
+    GeminiAdapter.java                ADAPTER #3: Google Gemini's generateContent REST API (JDK HttpClient)
+    AIModelFactory.java               picks mock / anthropic / gemini / ollama (SMARTPLATE_AI_PROVIDER, GUI switcher)
+    EnvFile.java                      reads API keys and settings from the git-ignored .env file
     MockAIModel.java                  offline fake AI (heuristic / scripted / failing)
     PromptFormat.java                 the "KEY: value" text protocol between agent and AI
     AIServiceException.java           "the AI service failed" error
@@ -269,7 +277,7 @@ src/main/java/com/smartplate/
     NutritionService.java, ServingScaler.java, SubstitutionService.java, ShoppingListService.java
   presentation/
     MealPlannerCLI.java               text interface
-    MealPlannerGUI.java               desktop window (tabs, strategy, AI badge)
+    MealPlannerGUI.java               desktop window (tabs, strategy and AI model switchers)
     gui/
       AssistantPanel.java             tab 1: AI requests, plan table, result, trace, shopping, nutrition
       RecipesPanel.java               tab 2: search, scale, substitute, recipe nutrition
@@ -282,7 +290,7 @@ src/main/java/com/smartplate/
       Icons.java                      small icons drawn in code
       TaskRunner.java                 runs AI calls in the background (or directly in tests)
 
-src/test/java/com/smartplate/         18 test classes, 99 tests (see section 12)
+src/test/java/com/smartplate/         20 test classes, 112 tests (see section 12)
 ```
 
 ---
@@ -345,12 +353,12 @@ all receive **the same facade object**, so they share one profile, one pantry an
 | **Composite** | one meal and a whole plan treated the same | `PlanComponent`, `MealPlan`, `PlannedMeal` | a component tree where parent = sum of children |
 
 ### 7.1 Facade — `facade/SmartRecipeFacade.java`
-One public method per feature: `setupProfile` (:79), `managePantry` (:92), `searchRecipes` (:114),
-`recommendRecipes` (:122), `createMealPlan` (:129), `editMealPlan` (:138), `undoLastChange` (:146),
-`adjustServings` (:155), `substituteIngredient` (:164), `calculateRecipeNutrition` (:177),
-`calculatePlanNutrition` (:182), `generateShoppingList` (:188). Helpers for the UI: `getProfile`,
+One public method per feature: `setupProfile` (:93), `managePantry` (:106), `searchRecipes` (:128),
+`recommendRecipes` (:136), `createMealPlan` (:143), `editMealPlan` (:152), `undoLastChange` (:160),
+`adjustServings` (:169), `substituteIngredient` (:178), `calculateRecipeNutrition` (:191),
+`calculatePlanNutrition` (:196), `generateShoppingList` (:202). Helpers for the UI: `getProfile`,
 `getPantry`, `getCurrentPlan`, `canUndo`, `getRecipe`, `getAllRecipes`, `getLastSubstitution`,
-`setStrategy` (:229), `getStrategyName`, `getAIModelName`, `getLastAgentTrace` (:251).
+`setStrategy` (:243), `getStrategyName`, `getAIModelName`, `getLastAgentTrace` (:293).
 State it owns: `profile`, `pantry`, `currentPlan`, `lastSubstitution`.
 
 ### 7.2 Adapter — `ai/`
@@ -365,8 +373,20 @@ State it owns: `profile`, `pantry`, `currentPlan`, `lastSubstitution`.
   to `<OLLAMA_URL>/api/chat`; `extractText` (:97) reads `message.content`, drops `<think>…</think>`
   (`stripThinking` :119) and maps 404 → "ollama pull <model>", other HTTP errors, connection refused
   and timeouts (180 s) to `AIServiceException`.
-- `AIModelFactory` (`ai/AIModelFactory.java:30` `create(env)`): a `switch` on `SMARTPLATE_AI_PROVIDER`.
-  It takes the environment as a `Map`, so tests pass a fake one. `auto` never picks Ollama.
+- `GeminiAdapter` (`ai/GeminiAdapter.java:26`): the same job for Google Gemini. `generate` (:63) POSTs
+  `buildRequestBody` (:90: `systemInstruction` = `SYSTEM_PROMPT`, `contents` = the prompt) to
+  `/v1beta/models/<model>:generateContent`, with the key in the `x-goog-api-key` header (never in the URL).
+  `extractText` (:100) joins the answer parts (skipping "thought" parts) and maps a bad key, unknown
+  model (404), rate limit (429), blocked prompt and empty answer to `AIServiceException`.
+- `AIModelFactory` (`ai/AIModelFactory.java`): `create(env)` (:41) handles `auto` (Claude key → Claude,
+  else Gemini key → Gemini, else Mock; never Ollama) and otherwise calls `forProvider(name, env)` (:53),
+  a `switch` over mock / anthropic / gemini / ollama. `missingSetting` (:75) says which key is missing;
+  `providerOf` (:87) maps a model back to its name. It takes the environment as a `Map`, so tests pass a fake one.
+- `EnvFile` (`ai/EnvFile.java`): `load()` = the real environment + the `KEY=value` lines of `./.env`
+  (environment wins). Like `dotenv` in Node.
+- **Switching at run time:** the GUI's AI model box calls `facade.setAIProvider(name)` (`SmartRecipeFacade.java:279`),
+  which re-reads the settings (so a key added to `.env` works without a restart), refuses with a
+  clear message if the key is missing, and otherwise calls `MealPlanningAgent.setAIModel` (:81).
 - `MockAIModel` (`ai/MockAIModel.java:32`): same interface, no network.
 
 ### 7.3 Strategy — `strategy/`
@@ -376,7 +396,7 @@ State it owns: `profile`, `pantry`, `currentPlan`, `lastSubstitution`.
   (descending), then cooking time, then id.
 - `FastestMealStrategy.selectRecipes` (:15): filter, then sort by cooking time, then id.
 - The agent is the "context": `MealPlanningAgent.setStrategy` (:68). The GUI combo box calls
-  `facade.setStrategy("fastest")` (`MealPlannerGUI.statusArea`, :100).
+  `facade.setStrategy("fastest")` (`MealPlannerGUI.statusArea`, :112).
 
 ### 7.4 Command — `command/`
 - `ReplaceMealCommand` (:10) stores `plan`, `day`, `oldMeal`, `newMeal`; `execute()` (:25) puts the
@@ -404,36 +424,36 @@ State it owns: `profile`, `pantry`, `currentPlan`, `lastSubstitution`.
 | 1 | Button was wired to `createPlan()` | `gui/AssistantPanel.java:135` `buildRequestBar` |
 | 2 | Read the text; blank → red error, stop | `AssistantPanel.java:315` `createPlan` → `:391` `requestText` |
 | 3 | Disable buttons, show "Working…", run in background | `:370` `runAI` → `gui/TaskRunner.java:17` |
-| 4 | **Facade** forwards to the agent | `facade/SmartRecipeFacade.java:129` `createMealPlan` |
+| 4 | **Facade** forwards to the agent | `facade/SmartRecipeFacade.java:143` `createMealPlan` |
 | 5 | Read constraints from the text ("5 dinners", "avoid mushrooms"…) | `agent/RequestConstraints.java:53` `parse` |
 | 6 | Number of days must be 5–7 or error | `RequestConstraints.java:96` `planDays` |
-| 7 | Get all 30 recipes, strategy filters + sorts, keep 15 | `agent/MealPlanningAgent.java:274` `shortlist` |
-| 8 | Build the prompt (profile, candidates, response format) | `MealPlanningAgent.java:310` `newPrompt` |
-| 9 | Ask the AI | `MealPlanningAgent.java:288` `callAI` → `MockAIModel.generate` (:65) or `AIAdapter.generate` (:42) |
-| 10 | Parse "Monday: r03" lines | `MealPlanningAgent.java:343` `parsePlan` |
-| 11 | Unknown id → violation; known → `PlannedMeal` added | `:301` `lookup`, `plan/MealPlan.java:26` `addMeal` |
+| 7 | Get all 30 recipes, strategy filters + sorts, keep 15 | `agent/MealPlanningAgent.java:282` `shortlist` |
+| 8 | Build the prompt (profile, candidates, response format) | `MealPlanningAgent.java:318` `newPrompt` |
+| 9 | Ask the AI | `MealPlanningAgent.java:296` `callAI` → `MockAIModel.generate` (:65) or `AIAdapter.generate` (:42) |
+| 10 | Parse "Monday: r03" lines | `MealPlanningAgent.java:351` `parsePlan` |
+| 11 | Unknown id → violation; known → `PlannedMeal` added | `:309` `lookup`, `plan/MealPlan.java:26` `addMeal` |
 | 12 | **Validate** the plan | `agent/ConstraintValidator.java:48` `validatePlan` → `:23` `validateRecipe` |
-| 13 | Problems? Ask once more with `PREVIOUS_VIOLATIONS` + `EXCLUDE`. Still bad → exception | loop in `MealPlanningAgent.createPlan` (:146) |
-| 14 | Facade stores the plan, clears undo history | `SmartRecipeFacade.java:129` |
+| 13 | Problems? Ask once more with `PREVIOUS_VIOLATIONS` + `EXCLUDE`. Still bad → exception | loop in `MealPlanningAgent.createPlan` (:154) |
+| 14 | Facade stores the plan, clears undo history | `SmartRecipeFacade.java:143` |
 | 15 | Back on the UI thread: fill the table, show success + trace | `AssistantPanel.java:445` `refreshPlan`, `:404` `showTrace` |
 
 ### 8.2 GUI: **Edit plan** and **Undo**
 
 1. `AssistantPanel.editPlan` (:328) takes a `snapshot()` (:484) of day → recipe first.
-2. `facade.editMealPlan` (:138) → `agent.editPlan` (`MealPlanningAgent.java:206`):
-   finds the day in the text (`findDay` :367), asks the AI for `DAY:` + `RECIPE:`, checks the recipe
+2. `facade.editMealPlan` (:152) → `agent.editPlan` (`MealPlanningAgent.java:214`):
+   finds the day in the text (`findDay` :375), asks the AI for `DAY:` + `RECIPE:`, checks the recipe
    exists, is different, and passes `validateRecipe`. Then it returns a `ReplaceMealCommand`.
 3. The facade runs it: `CommandHistory.execute` (:16) → `ReplaceMealCommand.execute` (:25) →
    `MealPlan.replaceMeal` (:43).
 4. The panel compares snapshots (`firstDifference` :495) to know which day changed. It sets
    `changedDay` (tinted row + "CHANGED" tag, `PlanRenderer` :731) and shows the before → now card
    (`comparison` :688).
-5. **Undo:** `AssistantPanel.undo` (:347) → `facade.undoLastChange` (:146) →
+5. **Undo:** `AssistantPanel.undo` (:347) → `facade.undoLastChange` (:160) →
    `CommandHistory.undo` (:22) → `ReplaceMealCommand.undo` (:30).
 
 ### 8.3 GUI: **Shopping list**
 
-`AssistantPanel.loadShoppingList` (:506) → `facade.generateShoppingList` (:188) →
+`AssistantPanel.loadShoppingList` (:506) → `facade.generateShoppingList` (:202) →
 `ShoppingListService.generate` (`service/ShoppingListService.java:19`):
 1. `plan.getIngredients()`: every ingredient of every day, already scaled to that day's servings.
 2. Invalid quantities are skipped with a note; the rest go into a `ShoppingList`.
@@ -461,19 +481,19 @@ The same facade method as the GUI, so the behaviour is identical.
 
 ### 9.2 `facade/SmartRecipeFacade.java`
 Every method validates its input, calls one subsystem, and returns or throws. Notes:
-- `setupProfile` (:79): `profile.validate()`; problems → `InvalidProfileException` (old profile kept).
-- `managePantry` (:92): `switch` on `ADD` / `UPDATE` / `REMOVE` → `Pantry`.
-- `createMealPlan` (:129): stores `currentPlan` and **clears the undo history**.
-- `editMealPlan` (:138): needs a plan; runs the agent's command through `CommandHistory`.
-- `substituteIngredient` (:164): checks the recipe contains the ingredient, then
+- `setupProfile` (:93): `profile.validate()`; problems → `InvalidProfileException` (old profile kept).
+- `managePantry` (:106): `switch` on `ADD` / `UPDATE` / `REMOVE` → `Pantry`.
+- `createMealPlan` (:143): stores `currentPlan` and **clears the undo history**.
+- `editMealPlan` (:152): needs a plan; runs the agent's command through `CommandHistory`.
+- `substituteIngredient` (:178): checks the recipe contains the ingredient, then
   `findSubstitute` + `applySubstitution`; remembers `lastSubstitution` for the UI message.
-- `setStrategy(name)` (:229): `"pantry..."` → `PantryFirstStrategy`, `"fast..."` → `FastestMealStrategy`.
+- `setStrategy(name)` (:243): `"pantry..."` → `PantryFirstStrategy`, `"fast..."` → `FastestMealStrategy`.
 
 ### 9.3 `agent/MealPlanningAgent.java` (the heart of the app)
 Constants: `MAX_CANDIDATES = 15` (:46), `DEFAULT_RECOMMENDATIONS = 3` (:47),
 `MAX_ATTEMPTS = 2` (:48) means first try + one revision. `PLAN_LINE` regex (:50) matches "Monday: r03".
 
-**Algorithm used by `recommend` (:87) and `createPlan` (:146):**
+**Algorithm used by `recommend` (:95) and `createPlan` (:154):**
 ```
 constraints = RequestConstraints.parse(request)      // extra rules from the text
 effective   = constraints.applyTo(profile)           // profile + those rules (copy)
@@ -487,12 +507,12 @@ repeat up to 2 times:
     if no violations → return result
 return valid part (recommend) or throw SmartPlateException (plan)
 ```
-- `editPlan` (:206) does **not** revise. It follows sequence diagram SD05: one answer, then
+- `editPlan` (:214) does **not** revise. It follows sequence diagram SD05: one answer, then
   validate, then a command or an error.
-- `shortlist` (:274), `callAI` (:288, logs the answer), `lookup` (:301), `newPrompt` (:310),
-  `candidateLine` (:334, "id | name | min | tags | ingredients"), `parsePlan` (:343),
-  `parseIdList` (:352), `cleanId` (:363, removes `*`, backticks etc.), `findDay` (:367).
-- `log` (:385) appends to the **trace** the GUI shows (`getLastTrace` :81).
+- `shortlist` (:282), `callAI` (:296, logs the answer), `lookup` (:309), `newPrompt` (:318),
+  `candidateLine` (:342, "id | name | min | tags | ingredients"), `parsePlan` (:351),
+  `parseIdList` (:360), `cleanId` (:371, removes `*`, backticks etc.), `findDay` (:375).
+- `log` (:393) appends to the **trace** the GUI shows (`getLastTrace` :89).
 
 **A prompt looks like this** (keys from `ai/PromptFormat.java`):
 ```
@@ -612,9 +632,9 @@ Constant keys (`TASK`, `REQUEST`, `CANDIDATES`, `RECIPES`, `DAY`, `RECIPE`…) a
 
 ## 10. The GUI, panel by panel
 
-The window: `MealPlannerGUI.start()` (:40) → `Theme.install()` → `buildContent()` (:54) creates the
-4 panels with the same facade and a `JTabbedPane`. The logo (`logo` :88) and the strategy selector +
-AI badge (`statusArea` :100) live in the tab bar. Switching tabs calls `refresh()` / `load()` /
+The window: `MealPlannerGUI.start()` (:52) → `Theme.install()` → `buildContent()` (:66) creates the
+4 panels with the same facade and a `JTabbedPane`. The logo (`logo` :100) and the strategy selector +
+AI model switcher (`statusArea` :112, `modelSwitcher` :150) live in the tab bar. Switching tabs calls `refresh()` / `load()` /
 `refreshPlan()`, because another tab may have changed the data.
 
 ### 10.1 `gui/AssistantPanel.java` (tab 1, 804 lines)
@@ -683,7 +703,7 @@ Errors print as `Error: <message>`; the loop never crashes on a `SmartPlateExcep
 
 ## 12. Tests
 
-`mvn test` runs **99 tests** in 18 classes, all offline (no real AI is called):
+`mvn test` runs **112 tests** in 20 classes, all offline (no real AI is called):
 
 | Test class | What it protects |
 |---|---|
@@ -694,7 +714,9 @@ Errors print as `Error: <message>`; the loop never crashes on a `SmartPlateExcep
 | `agent/MealPlanningAgentTest` | the agent loop: invented ids rejected, **exactly one** revision, AI failure |
 | `strategy/StrategyTest`, `command/CommandHistoryTest`, `service/ServicesTest` | patterns + services |
 | `ai/AIModelTest` | adapter request building, mock modes |
-| `ai/AIModelFactoryTest` | every `SMARTPLATE_AI_PROVIDER` value, defaults, unknown value |
+| `ai/AIModelFactoryTest` | every `SMARTPLATE_AI_PROVIDER` value, defaults, `auto` order, missing keys, unknown value |
+| `ai/EnvFileTest` | `.env` parsing, missing file, environment wins over the file |
+| `ai/GeminiAdapterTest` | the Gemini adapter against a fake Gemini server: URL, key header, request JSON, thought parts skipped, every error, and the whole agent through it |
 | `ai/OllamaAdapterTest` | the Ollama adapter against a fake Ollama server (a tiny `HttpServer` in the test): request JSON, `<think>` removal, 404/500/empty/unreachable errors, and the whole agent through it |
 | `facade/SmartRecipeFacadeTest` | all 10 features end to end |
 | `presentation/MealPlannerCLITest` | a scripted CLI session |
@@ -744,8 +766,8 @@ Order matters: the **first** one that fits the profile wins.
 ### 13.5 Add a recipe-selection strategy (e.g. "high protein")
 1. New class `strategy/HighProteinStrategy.java` implementing `RecipeSelectionStrategy` (copy
    `FastestMealStrategy`, sort by `-recipe.getNutritionPerServing().getProtein()`).
-2. `SmartRecipeFacade.setStrategy` (:229): add `else if (key.startsWith("protein")) strategy = new HighProteinStrategy();`.
-3. GUI: add `"protein"` to the combo in `MealPlannerGUI.statusArea` (:100). CLI help text in `HELP` (:35).
+2. `SmartRecipeFacade.setStrategy` (:243): add `else if (key.startsWith("protein")) strategy = new HighProteinStrategy();`.
+3. GUI: add `"protein"` to the combo in `MealPlannerGUI.statusArea` (:112). CLI help text in `HELP` (:35).
 4. Add to `StrategyTest`. Update the class diagram.
 
 ### 13.6 Add a new feature end to end (the pattern to follow)
@@ -763,15 +785,17 @@ Order matters: the **first** one that fits the profile wins.
 - Spacing of a panel: the `BorderFactory.createEmptyBorder(top, left, bottom, right)` calls (≈ CSS padding).
 
 ### 13.8 Change what the AI is told
-- Global rules: `AIAdapter.SYSTEM_PROMPT` (`ai/AIAdapter.java:26`). `OllamaAdapter` sends the same text.
-- Per-request content: `MealPlanningAgent.newPrompt` (:310) and the `RESPONSE_FORMAT` text in
+- Global rules: `AIAdapter.SYSTEM_PROMPT` (`ai/AIAdapter.java:26`). `OllamaAdapter` and `GeminiAdapter` send the same text.
+- Per-request content: `MealPlanningAgent.newPrompt` (:318) and the `RESPONSE_FORMAT` text in
   `recommend` / `createPlan` / `editPlan`. If you change the format, update the parsers
   (`parsePlan`, `parseIdList`) **and** `MockAIModel` so offline mode still works.
 
 ### 13.9 Use another AI provider
-Write a new class implementing `AIModel` (like `AIAdapter` or `OllamaAdapter`), then add a `case` for it
-in `AIModelFactory.create` (:30) and a test in `AIModelFactoryTest`. The agent doesn't change. That's the
-point of the Adapter pattern; `OllamaAdapter` was added exactly this way.
+Write a new class implementing `AIModel` (copy `GeminiAdapter`, the simplest HTTP one), then: add its name
+to `AIModelFactory.PROVIDERS`, a `case` in `forProvider` (:53), its key check in `missingSetting` (:75), an
+`instanceof` in `providerOf` (:87), a label in `MealPlannerGUI.PROVIDER_LABELS`, the key in `.env.example`,
+and tests. The agent doesn't change. That's the point of the Adapter pattern; `OllamaAdapter` and
+`GeminiAdapter` were added exactly this way.
 
 ### 13.10 Add a GUI tab
 New `JPanel` class in `presentation/gui/` that takes the facade in its constructor (copy
@@ -803,7 +827,9 @@ New `JPanel` class in `presentation/gui/` that takes the facade in its construct
 | Button stays disabled / table not updated | the panel's `updateButtons` / `refreshPlan` / `render` (no auto re-render!) |
 | Window looks unstyled | `Theme.install()` not called, or fonts missing from `resources/fonts` |
 | Real AI errors (503 / "No API key") | env var `ANTHROPIC_API_KEY`, `AIAdapter.generate` (:42) error mapping |
-| Wrong AI used / "Unknown SMARTPLATE_AI_PROVIDER" | the env var's spelling; `AIModelFactory.create` (:30). The model name is shown in the GUI header and the CLI's first line |
+| Wrong AI used / "Unknown SMARTPLATE_AI_PROVIDER" | the setting's spelling (`.env` or environment); `AIModelFactory.create` (:41). The model in use is shown in the GUI's AI model box and the CLI's first line |
+| AI model box turns red / "needs an API key" | the key is missing from `.env` (see `.env.example`); `AIModelFactory.missingSetting` (:75) |
+| Gemini errors ("rejected the API key", "does not know the model", "rate limited") | `GEMINI_API_KEY` / `GEMINI_MODEL` in `.env`; `GeminiAdapter.extractText` (:100) |
 | "Could not reach Ollama" / "ollama pull" / timeout | `ollama serve` running? model pulled? `OLLAMA_URL`; `OllamaAdapter.generate` (:60) |
 | Local model keeps failing validation | small models are weaker: try a bigger one (`OLLAMA_MODEL`), check `trace` in the CLI |
 
@@ -832,8 +858,8 @@ New `JPanel` class in `presentation/gui/` that takes the facade in its construct
 10. **Plan edits are never revised.** `editPlan` follows SD05 (one AI answer). If you want a retry,
     copy the loop from `createPlan`, and update SD05 too.
 11. **The real AI paths were never run live during development** (no API key, no local model).
-    Claude: only request building and error handling are unit-tested. Ollama: tested against a fake
-    Ollama server that speaks the same `/api/chat` JSON, so check it once with your own model.
+    Claude: only request building and error handling are unit-tested. Ollama and Gemini: tested
+    against fake servers that speak the same JSON, so check each once with your own model or key.
 
 ### 14.4 Common Java errors and what they mean
 | Error | Meaning / fix |
