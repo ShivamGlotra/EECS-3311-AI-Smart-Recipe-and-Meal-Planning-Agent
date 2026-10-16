@@ -36,7 +36,8 @@ public class AIClient {
 
     /** Reads the API key and model from environment variables. */
     public static AIClient fromEnvironment() {
-        return new AIClient(System.getenv(API_KEY_VARIABLE), System.getenv(MODEL_VARIABLE));
+        java.util.Map<String, String> env = EnvFile.load();
+        return new AIClient(env.get(API_KEY_VARIABLE), env.get(MODEL_VARIABLE));
     }
 
     /** True when an API key is configured. */

@@ -22,8 +22,9 @@ public final class AIModelFactory {
     private AIModelFactory() {
     }
 
+    /** The real environment, plus a local git-ignored .env file for secrets (see EnvFile). */
     public static AIModel fromEnvironment() {
-        return create(System.getenv());
+        return create(EnvFile.load());
     }
 
     /** Takes the environment as a map so tests do not depend on the real environment. */
