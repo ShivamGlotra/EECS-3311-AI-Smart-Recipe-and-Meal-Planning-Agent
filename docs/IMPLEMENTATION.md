@@ -399,7 +399,8 @@ mvn test
 ## 7. Additions and small differences from the Stage 1 class diagram
 
 The implementation follows the class diagram. The helper classes below were added; none of them
-changes a pattern or a sequence diagram.
+changes a pattern or a sequence diagram. The complete list of design changes, each with its reason,
+and the feature-by-feature traceability table are in [`STAGE2_REPORT.md` §5–§6](STAGE2_REPORT.md#5-design-to-implementation-traceability-11).
 
 | Addition / difference | Why |
 |---|---|

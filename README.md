@@ -1,11 +1,21 @@
 > **Implementation (Stage 2).** The design below is implemented in Java under `src/`.
-> Build and test with `mvn test`. Run with `mvn package` and then `java -jar target/smartplate-1.0.0.jar`
-> (add `--cli` for the command line). It runs offline with a mock AI. To use Claude, Gemini or a local
-> Ollama model, copy `.env.example` to `.env` (git-ignored) and fill it in, then pick the model in the
-> **AI model** box at the top right of the window.
+>
+> **Setup and run**
+> 1. Install **JDK 17 or newer** and **Maven 3.8 or newer** (check with `java -version` and `mvn -v`).
+> 2. From the project folder, run the tests: `mvn test` (112 tests, offline, no API key needed).
+> 3. Build and start the desktop app: `mvn package`, then `java -jar target/smartplate-1.0.0.jar`.
+>    Add `--cli` for the command-line version, `--mock` to force the offline AI, `--empty` to start with an empty pantry.
+> 4. *Optional, real AI:* copy `.env.example` to `.env` (git-ignored, so keys are never pushed) and fill in
+>    `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` and/or `OLLAMA_MODEL` for a local Ollama model. Start the app from
+>    the project folder and pick the model in the **AI model** box at the top right of the window.
+>    Without a `.env` the app uses the offline Mock AI.
+>
+> **Documents**
+> - Stage 2 report (AI tools, collaboration log, traceability, design changes): [docs/STAGE2_REPORT.md](docs/STAGE2_REPORT.md)
 > - Code explanation: [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)
-> - Where AI helped (disclosure for the instructor): [docs/AI_USAGE.md](docs/AI_USAGE.md)
 > - Developer guide (structure, every function, how to change and debug): [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)
+> - Where AI helped (disclosure for the instructor): [docs/AI_USAGE.md](docs/AI_USAGE.md)
+> - Stage 1 design report: below, and in [SmartPlate_Stage1_Report_FINAL.md](SmartPlate_Stage1_Report_FINAL.md)
 
 EECS3311 Fall 2026 — Stage 1 Project Design Report
 SmartPlate: AI Smart Recipe and Meal Planning Agent

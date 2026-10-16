@@ -225,6 +225,7 @@ IntelliJ runs the app from the project folder, so it finds `.env` too.
 pom.xml                         build file: Java 17, JUnit 5, Anthropic SDK, FlatLaf, fat-jar packaging
 README.md                       the Stage 1 design report (+ a short pointer to the docs)
 docs/
+  STAGE2_REPORT.md              Stage 2 report: AI tools, collaboration log, traceability, design changes
   IMPLEMENTATION.md             shorter code explanation for the instructor
   AI_USAGE.md                   where AI helped (disclosure for the professor)
   DEVELOPER_GUIDE.md            this file
@@ -347,7 +348,7 @@ all receive **the same facade object**, so they share one profile, one pantry an
 | Pattern | Problem it solves | Classes | React analogy |
 |---|---|---|---|
 | **Facade** | UI shouldn't know 10 internal classes | `SmartRecipeFacade` | an `api.js` module the components call |
-| **Adapter** | swap AI providers / run offline | `AIModel` ← `AIAdapter` → `AIClient`; `MockAIModel` | a wrapper around `fetch` / an SDK; a mock for tests |
+| **Adapter** | swap AI providers / run offline | `AIModel` ← `AIAdapter` → `AIClient`; `GeminiAdapter`; `OllamaAdapter`; `MockAIModel` | a wrapper around `fetch` / an SDK; a mock for tests |
 | **Strategy** | several ways to pick candidate recipes | `RecipeSelectionStrategy`, `PantryFirstStrategy`, `FastestMealStrategy` | passing a `sortFn` prop |
 | **Command** | undo plan edits | `Command`, `ReplaceMealCommand`, `CommandHistory` | Redux actions + an undo stack |
 | **Composite** | one meal and a whole plan treated the same | `PlanComponent`, `MealPlan`, `PlannedMeal` | a component tree where parent = sum of children |

@@ -14,9 +14,10 @@ different uses of AI apart:
 | Item | Detail |
 |---|---|
 | Tool | **Claude Code**, Anthropic's AI coding assistant, used through claude.ai/code |
+| LLM model | _[Team]_ as shown in Claude Code's session details; recorded in [`STAGE2_REPORT.md` §3](STAGE2_REPORT.md#3-ai-tools-and-models-9) |
 | Used for | Generating the Java implementation, the unit tests, the sample data and the documentation in this branch |
 | Input given to the tool | The team's **Stage 1 design report and UML diagrams** (branch `stage-1Fix`: `README.md`, `docs/uml-diagrams/**`, since moved to `docs/plantuml-diagrams/`; the final UMLet versions are in `docs/umlet-diagrams/`), plus the instruction to implement every feature as described in the report, explain the code, and document the AI assistance |
-| Where its output lives | Every file added in the Stage 2 implementation commit: `pom.xml`, `src/**`, `docs/IMPLEMENTATION.md`, `docs/AI_USAGE.md`, `docs/screenshots/**`, and the short "Implementation" section at the top of `README.md` |
+| Where its output lives | The Stage 2 commits on the `claude/nifty-albattani-1lnuay` and `claude/swing-ui-direction-b` branches: `pom.xml`, `src/**`, `.env.example`, `docs/IMPLEMENTATION.md`, `docs/DEVELOPER_GUIDE.md`, `docs/STAGE2_REPORT.md` (draft), `docs/AI_USAGE.md`, `docs/screenshots/**`, and the "Implementation" section at the top of `README.md`. Exceptions written by the team are listed in §2. |
 
 The Stage 1 report (requirements, features F01–F10, use cases, class and sequence diagrams, and the
 choice of the five design patterns) was the **input** to the tool. This disclosure does not cover
@@ -43,7 +44,8 @@ how that report was written.
 | Gemini adapter, `.env` support, AI model switcher | `ai/GeminiAdapter.java`, `ai/EnvFile.java`, `.env.example`, `.gitignore`, `SmartRecipeFacade.setAIProvider`, `MealPlanningAgent.setAIModel`, `MealPlannerGUI.modelSwitcher` | Yes | Requested by the team; written by Claude Code |
 | Local model adapter | `ai/OllamaAdapter.java` | Yes | Written by Claude Code to the constructor and constants the team's factory expects |
 | Tests | `src/test/**` | Yes | 112 JUnit 5 tests (15 of them for the GUI; 22 for the factory, `.env`, Ollama and Gemini adapters) |
-| Documentation | `docs/IMPLEMENTATION.md`, this file | Yes | Code explanation and this disclosure |
+| Documentation | `docs/IMPLEMENTATION.md`, `docs/DEVELOPER_GUIDE.md`, this file | Yes | Code explanation, developer guide and this disclosure |
+| Stage 2 report | `docs/STAGE2_REPORT.md` | Drafted by AI | Tools table, collaboration log, traceability and design changes, drafted from the session history; the parts marked _[Team]_ are for the team to complete and confirm |
 
 **Sample data caveat:** the recipes, quantities and nutrition values in `SampleData.java` were made
 up by the AI for demonstration. They were **not** checked against a nutrition database and should
