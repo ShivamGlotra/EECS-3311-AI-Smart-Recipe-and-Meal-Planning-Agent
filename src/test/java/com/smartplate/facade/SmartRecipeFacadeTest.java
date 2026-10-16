@@ -11,7 +11,9 @@ import com.smartplate.domain.UserProfile;
 import com.smartplate.plan.MealPlan;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -105,5 +107,25 @@ class SmartRecipeFacadeTest {
         facade.setStrategy("fastest");
         assertEquals("fastest", facade.getStrategyName());
         assertThrows(SmartPlateException.class, () -> facade.setStrategy("random"));
+    }
+
+    @Test
+    void aiModelCanBeSwitchedAtRunTimeWhenItsKeyIsSet() {
+        Map<String, String> settings = new HashMap<>();
+        SmartRecipeFacade facade = SmartRecipeFacade.create(new MockAIModel(), () -> settings);
+        assertEquals("mock", facade.getAIProvider());
+
+        SmartPlateException noKey = assertThrows(SmartPlateException.class, () -> facade.setAIProvider("gemini"));
+        assertTrue(noKey.getMessage().contains("GEMINI_API_KEY"));
+        assertEquals("mock", facade.getAIProvider(), "the current model is kept");
+
+        settings.put("GEMINI_API_KEY", "g-key"); // e.g. added to .env while the app runs
+        facade.setAIProvider("gemini");
+        assertEquals("gemini", facade.getAIProvider());
+        assertTrue(facade.getAIModelName().startsWith("Gemini"));
+
+        facade.setAIProvider("mock");
+        assertEquals("mock", facade.getAIProvider());
+        assertThrows(SmartPlateException.class, () -> facade.setAIProvider("gpt"));
     }
 }

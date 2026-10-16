@@ -50,7 +50,7 @@ public class MealPlanningAgent {
     private static final Pattern PLAN_LINE = Pattern.compile(
             "(?i)\\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b\\s*[:=\\-]+\\s*([A-Za-z0-9_-]+)");
 
-    private final AIModel aiModel;
+    private volatile AIModel aiModel; // switchable at run time from the GUI
     private final RecipeRepository repository;
     private final ConstraintValidator validator;
     private RecipeSelectionStrategy strategy;
@@ -75,6 +75,14 @@ public class MealPlanningAgent {
 
     public AIModel getAIModel() {
         return aiModel;
+    }
+
+    /** Switches the AI model at run time; the next request uses the new one. */
+    public void setAIModel(AIModel aiModel) {
+        if (aiModel == null) {
+            throw new IllegalArgumentException("aiModel is required");
+        }
+        this.aiModel = aiModel;
     }
 
     /** The steps the agent took during the last request. */

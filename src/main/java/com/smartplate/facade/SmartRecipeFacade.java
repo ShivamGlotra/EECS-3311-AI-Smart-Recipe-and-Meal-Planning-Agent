@@ -3,6 +3,8 @@ package com.smartplate.facade;
 import com.smartplate.agent.ConstraintValidator;
 import com.smartplate.agent.MealPlanningAgent;
 import com.smartplate.ai.AIModel;
+import com.smartplate.ai.AIModelFactory;
+import com.smartplate.ai.EnvFile;
 import com.smartplate.command.Command;
 import com.smartplate.command.CommandHistory;
 import com.smartplate.domain.Ingredient;
@@ -27,6 +29,8 @@ import com.smartplate.strategy.PantryFirstStrategy;
 import com.smartplate.strategy.RecipeSelectionStrategy;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * Facade pattern - the single entry point for every feature.
@@ -49,6 +53,8 @@ public class SmartRecipeFacade {
     private final CommandHistory commandHistory;
     private MealPlan currentPlan;
     private Substitution lastSubstitution;
+    /** Where AI settings (API keys, model names) come from when the user switches model. */
+    private Supplier<Map<String, String>> aiSettings = EnvFile::load;
 
     public SmartRecipeFacade(RecipeRepository repository, MealPlanningAgent agent, NutritionService nutritionService,
                              ServingScaler servingScaler, SubstitutionService substitutionService,
@@ -64,11 +70,19 @@ public class SmartRecipeFacade {
 
     /** Wires the whole system with the sample recipes and the given AI model. */
     public static SmartRecipeFacade create(AIModel aiModel) {
+        return create(aiModel, EnvFile::load);
+    }
+
+    /** As {@link #create(AIModel)}, with the AI settings taken from the given source (used by tests). */
+    public static SmartRecipeFacade create(AIModel aiModel, Supplier<Map<String, String>> aiSettings) {
         RecipeRepository repository = RecipeRepository.withSampleRecipes();
         MealPlanningAgent agent = new MealPlanningAgent(aiModel, repository, new ConstraintValidator(),
                 new PantryFirstStrategy());
-        return new SmartRecipeFacade(repository, agent, new NutritionService(), new ServingScaler(),
-                SubstitutionService.withDefaultSubstitutions(), new ShoppingListService(), new CommandHistory());
+        SmartRecipeFacade facade = new SmartRecipeFacade(repository, agent, new NutritionService(),
+                new ServingScaler(), SubstitutionService.withDefaultSubstitutions(), new ShoppingListService(),
+                new CommandHistory());
+        facade.aiSettings = aiSettings;
+        return facade;
     }
 
     // ------------------------------------------------------------------ F01
@@ -245,6 +259,34 @@ public class SmartRecipeFacade {
 
     public String getAIModelName() {
         return agent.getAIModel().getName();
+    }
+
+    /** The AI providers the user can switch between: mock, anthropic, gemini, ollama. */
+    public List<String> getAIProviders() {
+        return AIModelFactory.PROVIDERS;
+    }
+
+    /** The provider of the AI model in use. */
+    public String getAIProvider() {
+        return AIModelFactory.providerOf(agent.getAIModel());
+    }
+
+    /**
+     * Switches the AI model at run time. The settings (.env file and environment) are read
+     * again, so a key added to .env works without a restart. If the provider cannot be used
+     * (e.g. its API key is missing) the current model is kept and the reason is thrown.
+     */
+    public void setAIProvider(String provider) {
+        Map<String, String> settings = aiSettings.get();
+        String missing = AIModelFactory.missingSetting(provider, settings);
+        if (missing != null) {
+            throw new SmartPlateException(missing);
+        }
+        try {
+            agent.setAIModel(AIModelFactory.forProvider(provider, settings));
+        } catch (IllegalArgumentException e) {
+            throw new SmartPlateException(e.getMessage());
+        }
     }
 
     /** What the agent did during the last AI request (for "explain" / transparency). */

@@ -10,10 +10,15 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.formdev.flatlaf.FlatClientProperties;
+
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JTabbedPane;
 import java.awt.Component;
 import java.awt.Container;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -245,6 +250,43 @@ class GuiPanelsTest {
         assertEquals("Recipes", tabs.getTitleAt(1));
         assertEquals("Pantry", tabs.getTitleAt(2));
         assertEquals("Preferences", tabs.getTitleAt(3));
+    }
+
+    @Test
+    void theAiModelSwitcherChangesModelOrExplainsWhyNot() {
+        SmartRecipeFacade switchable = SmartRecipeFacade.create(new MockAIModel(), () -> Map.of("OLLAMA_MODEL", "gemma4:e4b"));
+        JComponent content = new MealPlannerGUI(switchable).buildContent();
+        JTabbedPane tabs = find(content, JTabbedPane.class);
+        JComboBox<?> model = findNamed((Component) tabs.getClientProperty(
+                FlatClientProperties.TABBED_PANE_TRAILING_COMPONENT), "aiModel");
+        assertNotNull(model, "the AI model switcher is in the top-right of the tab bar");
+        assertEquals(List.of("mock", "anthropic", "gemini", "ollama"), switchable.getAIProviders());
+        assertEquals("mock", model.getSelectedItem());
+
+        model.setSelectedItem("ollama");
+        assertEquals("Ollama (gemma4:e4b)", switchable.getAIModelName());
+        assertNull(model.getClientProperty(FlatClientProperties.OUTLINE));
+
+        model.setSelectedItem("gemini"); // no GEMINI_API_KEY in these settings
+        assertEquals("ollama", model.getSelectedItem(), "the previous choice comes back");
+        assertEquals("Ollama (gemma4:e4b)", switchable.getAIModelName());
+        assertEquals(FlatClientProperties.OUTLINE_ERROR, model.getClientProperty(FlatClientProperties.OUTLINE));
+        assertTrue(model.getToolTipText().contains("GEMINI_API_KEY"));
+    }
+
+    private static JComboBox<?> findNamed(Component c, String name) {
+        if (c instanceof JComboBox && name.equals(c.getName())) {
+            return (JComboBox<?>) c;
+        }
+        if (c instanceof Container) {
+            for (Component child : ((Container) c).getComponents()) {
+                JComboBox<?> found = findNamed(child, name);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 
     private static <T> T find(Component c, Class<T> type) {

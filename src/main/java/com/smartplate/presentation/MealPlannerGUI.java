@@ -12,15 +12,22 @@ import com.smartplate.presentation.gui.Theme;
 import com.smartplate.presentation.gui.Ui;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.GraphicsEnvironment;
+import java.util.Map;
 
 /**
  * Swing desktop interface ("Clean Slate" design, light mode). Like the CLI it calls only
@@ -30,7 +37,12 @@ import java.awt.FlowLayout;
  */
 public class MealPlannerGUI {
 
+    /** How each AI provider from the facade is shown in the model switcher. */
+    private static final Map<String, String> PROVIDER_LABELS = Map.of(
+            "mock", "Mock (offline)", "anthropic", "Claude", "gemini", "Gemini", "ollama", "Ollama (local)");
+
     private final SmartRecipeFacade facade;
+    private boolean revertingModel;
 
     public MealPlannerGUI(SmartRecipeFacade facade) {
         this.facade = facade;
@@ -50,7 +62,7 @@ public class MealPlannerGUI {
         });
     }
 
-    /** The whole window content: a tab bar with the logo, the four tabs, the strategy and AI badge. */
+    /** The whole window content: a tab bar with the logo, the four tabs, the strategy and AI model switchers. */
     public JComponent buildContent() {
         Theme.install();
         AssistantPanel assistant = new AssistantPanel(facade);
@@ -96,7 +108,7 @@ public class MealPlannerGUI {
         return logo;
     }
 
-    /** Strategy selector (Strategy pattern, switchable at run time) and the AI model badge. */
+    /** Strategy selector (Strategy pattern) and AI model selector (Adapter pattern), both switchable at run time. */
     private JComponent statusArea() {
         JLabel label = Ui.fieldLabel("Strategy");
         JComboBox<String> strategy = new JComboBox<>(new String[]{"pantry-first", "fastest"});
@@ -110,14 +122,17 @@ public class MealPlannerGUI {
                 strategy.setSelectedItem(facade.getStrategyName());
             }
         });
-        JLabel badge = Ui.outlinedPill("AI: " + shortModelName(), Theme.mono(12f));
-        badge.setToolTipText(facade.getAIModelName());
+        JLabel modelLabel = Ui.fieldLabel("AI model");
+        JComboBox<String> model = modelSwitcher();
+        modelLabel.setLabelFor(model);
         JPanel area = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         area.setOpaque(false);
         area.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 20));
         area.add(label);
         area.add(strategy);
-        area.add(badge);
+        area.add(Box.createHorizontalStrut(8));
+        area.add(modelLabel);
+        area.add(model);
         JPanel wrap = new JPanel(new java.awt.GridBagLayout());
         wrap.setBackground(Theme.SURFACE); // FlatLaf stretches this over the rest of the tab bar
         java.awt.GridBagConstraints c = new java.awt.GridBagConstraints();
@@ -127,7 +142,59 @@ public class MealPlannerGUI {
         return wrap;
     }
 
-    private String shortModelName() {
+    /**
+     * Lists the providers (Mock, Claude, Gemini, Ollama). Choosing one asks the facade to switch;
+     * if that fails (e.g. no API key in .env) the previous choice comes back and the reason is shown.
+     * The closed box shows the exact model in use, e.g. "Ollama (gemma4:e4b)".
+     */
+    private JComboBox<String> modelSwitcher() {
+        JComboBox<String> model = new JComboBox<>(facade.getAIProviders().toArray(new String[0]));
+        model.setName("aiModel");
+        model.setSelectedItem(facade.getAIProvider());
+        model.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                                                          boolean selected, boolean focus) {
+                // index -1 is the closed box: show the exact model; the open list shows provider names
+                String text = index < 0 ? modelDisplayName() : PROVIDER_LABELS.getOrDefault(value, String.valueOf(value));
+                return super.getListCellRendererComponent(list, text, index, selected, focus);
+            }
+        });
+        model.setToolTipText("AI in use: " + facade.getAIModelName());
+        fitToModelName(model);
+        model.addActionListener(e -> {
+            if (revertingModel) {
+                return;
+            }
+            String chosen = (String) model.getSelectedItem();
+            try {
+                facade.setAIProvider(chosen);
+                model.putClientProperty(FlatClientProperties.OUTLINE, null);
+                model.setToolTipText("AI in use: " + facade.getAIModelName());
+            } catch (SmartPlateException ex) {
+                revertingModel = true;
+                model.setSelectedItem(facade.getAIProvider());
+                revertingModel = false;
+                model.putClientProperty(FlatClientProperties.OUTLINE, FlatClientProperties.OUTLINE_ERROR);
+                model.setToolTipText(ex.getMessage());
+                if (!GraphicsEnvironment.isHeadless()) {
+                    JOptionPane.showMessageDialog(model, ex.getMessage() + "\nSee .env.example in the project folder.",
+                            "Cannot switch to " + PROVIDER_LABELS.getOrDefault(chosen, chosen),
+                            JOptionPane.WARNING_MESSAGE);
+                }
+            }
+            fitToModelName(model);
+        });
+        return model;
+    }
+
+    /** Swing caches the box width; a new prototype value makes it measure the current model name again. */
+    private void fitToModelName(JComboBox<String> model) {
+        model.setPrototypeDisplayValue(new String(facade.getAIModelName())); // new instance: always a change
+        model.revalidate();
+    }
+
+    private String modelDisplayName() {
         String name = facade.getAIModelName();
         return name.startsWith("Mock") ? "Mock (offline)" : name;
     }
