@@ -1,0 +1,47 @@
+@startuml
+title SD03 - AI Recipe Recommendation (F04 / UC04)
+
+actor User
+participant "MealPlannerGUI / MealPlannerCLI" as UI
+participant SmartRecipeFacade as Facade
+participant MealPlanningAgent as Agent
+participant RecipeRepository as Repository
+participant RecipeSelectionStrategy as Strategy
+participant AIModel as AI
+participant ConstraintValidator as Validator
+
+User -> UI : enter request
+UI -> Facade : recommendRecipes(request)
+Facade -> Agent : recommend(request, profile, pantry)
+Agent -> Repository : findAll()
+Repository --> Agent : List<Recipe>
+Agent -> Strategy : selectRecipes(recipes, profile, pantry)
+Strategy --> Agent : candidate recipes
+
+Agent -> AI : generate(prompt)
+alt AI service fails
+    AI --> Agent : error
+    Agent --> Facade : error
+    Facade --> UI : error
+    UI --> User : display message
+else AI responds
+    AI --> Agent : selected recipes
+    Agent -> Validator : validateRecipe(recipe, profile)
+    Validator --> Agent : ValidationResult
+    alt violations or recipe not in repository
+        Agent -> AI : generate(prompt + violation messages)
+        AI --> Agent : revised selection
+        Agent -> Validator : validateRecipe(recipe, profile)
+        Validator --> Agent : ValidationResult
+    end
+    alt valid recommendations
+        Agent --> Facade : List<Recipe>
+        Facade --> UI : recommendations
+        UI --> User : display recommendations
+    else no valid recommendation
+        Agent --> Facade : failure reported
+        Facade --> UI : error
+        UI --> User : display message
+    end
+end
+@enduml

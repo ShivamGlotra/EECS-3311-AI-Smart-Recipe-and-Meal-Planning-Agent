@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<diagram program="umlet" version="15.1"><zoom_level>10</zoom_level>
+<element><id>Text</id><coordinates><x>10</x><y>5</y><w>700</w><h>24</h></coordinates><panel_attributes>SD06 - Recipe Utilities (F07, F08, F09, F10 / UC07 - UC10)
+fontsize=14
+halign=left</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>40</x><y>104</y><w>2069</w><h>6</h></coordinates><panel_attributes>lt=.</panel_attributes><additional_attributes>0;3;2069.8;3</additional_attributes></element>
+<element><id>UMLClass</id><coordinates><x>965</x><y>94</y><w>218</w><h>24</h></coordinates><panel_attributes>F07 / UC07: Adjust servings
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>40</x><y>596</y><w>2069</w><h>6</h></coordinates><panel_attributes>lt=.</panel_attributes><additional_attributes>0;3;2069.8;3</additional_attributes></element>
+<element><id>UMLClass</id><coordinates><x>946</x><y>586</y><w>257</w><h>24</h></coordinates><panel_attributes>F08 / UC08: Substitute ingredient
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>40</x><y>1226</y><w>2069</w><h>6</h></coordinates><panel_attributes>lt=.</panel_attributes><additional_attributes>0;3;2069.8;3</additional_attributes></element>
+<element><id>UMLClass</id><coordinates><x>952</x><y>1216</y><w>244</w><h>24</h></coordinates><panel_attributes>F09 / UC09: Calculate nutrition
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>40</x><y>2216</y><w>2069</w><h>6</h></coordinates><panel_attributes>lt=.</panel_attributes><additional_attributes>0;3;2069.8;3</additional_attributes></element>
+<element><id>UMLClass</id><coordinates><x>942</x><y>2206</y><w>264</w><h>24</h></coordinates><panel_attributes>F10 / UC10: Generate shopping list
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>UMLPackage</id><coordinates><x>62</x><y>226</y><w>871</w><h>346</h></coordinates><panel_attributes>alt
+transparency=0</panel_attributes><additional_attributes/></element>
+<element><id>Text</id><coordinates><x>114</x><y>227</y><w>251</w><h>20</h></coordinates><panel_attributes>[servings &lt;= 0 or invalid quantity]
+halign=left</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>62</x><y>346</y><w>871</w><h>8</h></coordinates><panel_attributes>lt=..</panel_attributes><additional_attributes>0;4;871.1999999999999;4</additional_attributes></element>
+<element><id>Text</id><coordinates><x>66</x><y>352</y><w>66</w><h>20</h></coordinates><panel_attributes>[valid]
+halign=left</panel_attributes><additional_attributes/></element>
+<element><id>UMLPackage</id><coordinates><x>62</x><y>764</y><w>1031</w><h>438</h></coordinates><panel_attributes>alt
+transparency=0</panel_attributes><additional_attributes/></element>
+<element><id>Text</id><coordinates><x>114</x><y>765</y><w>356</w><h>20</h></coordinates><panel_attributes>[no substitute exists or all conflict with profile]
+halign=left</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>62</x><y>930</y><w>1031</w><h>8</h></coordinates><panel_attributes>lt=..</panel_attributes><additional_attributes>0;4;1031.6;4</additional_attributes></element>
+<element><id>Text</id><coordinates><x>66</x><y>936</y><w>138</w><h>20</h></coordinates><panel_attributes>[substitute found]
+halign=left</panel_attributes><additional_attributes/></element>
+<element><id>UMLPackage</id><coordinates><x>1664</x><y>1682</y><w>275</w><h>132</h></coordinates><panel_attributes>loop
+transparency=0</panel_attributes><additional_attributes/></element>
+<element><id>Text</id><coordinates><x>1716</x><y>1683</y><w>145</w><h>20</h></coordinates><panel_attributes>[each planned meal]
+halign=left</panel_attributes><additional_attributes/></element>
+<element><id>UMLPackage</id><coordinates><x>62</x><y>1256</y><w>1891</w><h>672</h></coordinates><panel_attributes>alt
+transparency=0</panel_attributes><additional_attributes/></element>
+<element><id>Text</id><coordinates><x>114</x><y>1257</y><w>171</w><h>20</h></coordinates><panel_attributes>[nutrition of a recipe]
+halign=left</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>62</x><y>1468</y><w>1891</w><h>8</h></coordinates><panel_attributes>lt=..</panel_attributes><additional_attributes>0;4;1891.8;4</additional_attributes></element>
+<element><id>Text</id><coordinates><x>66</x><y>1474</y><w>171</w><h>20</h></coordinates><panel_attributes>[nutrition of the plan]
+halign=left</panel_attributes><additional_attributes/></element>
+<element><id>UMLPackage</id><coordinates><x>62</x><y>1938</y><w>685</w><h>254</h></coordinates><panel_attributes>alt
+transparency=0</panel_attributes><additional_attributes/></element>
+<element><id>Text</id><coordinates><x>114</x><y>1939</y><w>185</w><h>20</h></coordinates><panel_attributes>[data missing or invalid]
+halign=left</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>62</x><y>2058</y><w>685</w><h>8</h></coordinates><panel_attributes>lt=..</panel_attributes><additional_attributes>0;4;685.4;4</additional_attributes></element>
+<element><id>Text</id><coordinates><x>66</x><y>2064</y><w>79</w><h>20</h></coordinates><panel_attributes>[success]
+halign=left</panel_attributes><additional_attributes/></element>
+<element><id>UMLPackage</id><coordinates><x>62</x><y>2568</y><w>2015</w><h>554</h></coordinates><panel_attributes>alt
+transparency=0</panel_attributes><additional_attributes/></element>
+<element><id>Text</id><coordinates><x>114</x><y>2569</y><w>99</w><h>20</h></coordinates><panel_attributes>[empty plan]
+halign=left</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>62</x><y>2734</y><w>2015</w><h>8</h></coordinates><panel_attributes>lt=..</panel_attributes><additional_attributes>0;4;2015.8000000000002;4</additional_attributes></element>
+<element><id>Text</id><coordinates><x>66</x><y>2740</y><w>145</w><h>20</h></coordinates><panel_attributes>[ingredients found]
+halign=left</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>102</x><y>74</y><w>16</w><h>3064</h></coordinates><panel_attributes>lt=.</panel_attributes><additional_attributes>8;0;8;3064</additional_attributes></element>
+<element><id>UMLActor</id><coordinates><x>90</x><y>20</y><w>40</w><h>64</h></coordinates><panel_attributes>User</panel_attributes><additional_attributes/></element>
+<element><id>UMLActor</id><coordinates><x>90</x><y>3130</y><w>40</w><h>64</h></coordinates><panel_attributes>User</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>393</x><y>74</y><w>16</w><h>3064</h></coordinates><panel_attributes>lt=.</panel_attributes><additional_attributes>8;0;8;3064</additional_attributes></element>
+<element><id>UMLClass</id><coordinates><x>330</x><y>28</y><w>142</w><h>44</h></coordinates><panel_attributes>MealPlannerGUI /
+MealPlannerCLI
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>UMLClass</id><coordinates><x>330</x><y>3138</y><w>142</w><h>44</h></coordinates><panel_attributes>MealPlannerGUI /
+MealPlannerCLI
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>691</x><y>74</y><w>16</w><h>3064</h></coordinates><panel_attributes>lt=.</panel_attributes><additional_attributes>8;0;8;3064</additional_attributes></element>
+<element><id>UMLClass</id><coordinates><x>624</x><y>28</y><w>149</w><h>34</h></coordinates><panel_attributes>SmartRecipeFacade
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>UMLClass</id><coordinates><x>624</x><y>3138</y><w>149</w><h>34</h></coordinates><panel_attributes>SmartRecipeFacade
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>877</x><y>74</y><w>16</w><h>3064</h></coordinates><panel_attributes>lt=.</panel_attributes><additional_attributes>8;0;8;3064</additional_attributes></element>
+<element><id>UMLClass</id><coordinates><x>825</x><y>28</y><w>120</w><h>34</h></coordinates><panel_attributes>ServingScaler
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>UMLClass</id><coordinates><x>825</x><y>3138</y><w>120</w><h>34</h></coordinates><panel_attributes>ServingScaler
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>1037</x><y>74</y><w>16</w><h>3064</h></coordinates><panel_attributes>lt=.</panel_attributes><additional_attributes>8;0;8;3064</additional_attributes></element>
+<element><id>UMLClass</id><coordinates><x>963</x><y>28</y><w>164</w><h>34</h></coordinates><panel_attributes>SubstitutionService
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>UMLClass</id><coordinates><x>963</x><y>3138</y><w>164</w><h>34</h></coordinates><panel_attributes>SubstitutionService
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>1209</x><y>74</y><w>16</w><h>3064</h></coordinates><panel_attributes>lt=.</panel_attributes><additional_attributes>8;0;8;3064</additional_attributes></element>
+<element><id>UMLClass</id><coordinates><x>1145</x><y>28</y><w>142</w><h>34</h></coordinates><panel_attributes>NutritionService
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>UMLClass</id><coordinates><x>1145</x><y>3138</y><w>142</w><h>34</h></coordinates><panel_attributes>NutritionService
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>1380</x><y>74</y><w>16</w><h>3064</h></coordinates><panel_attributes>lt=.</panel_attributes><additional_attributes>8;0;8;3064</additional_attributes></element>
+<element><id>UMLClass</id><coordinates><x>1306</x><y>28</y><w>164</w><h>34</h></coordinates><panel_attributes>ShoppingListService
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>UMLClass</id><coordinates><x>1306</x><y>3138</y><w>164</w><h>34</h></coordinates><panel_attributes>ShoppingListService
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>1704</x><y>74</y><w>16</w><h>3064</h></coordinates><panel_attributes>lt=.</panel_attributes><additional_attributes>8;0;8;3064</additional_attributes></element>
+<element><id>UMLClass</id><coordinates><x>1652</x><y>28</y><w>120</w><h>34</h></coordinates><panel_attributes>MealPlan
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>UMLClass</id><coordinates><x>1652</x><y>3138</y><w>120</w><h>34</h></coordinates><panel_attributes>MealPlan
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>1883</x><y>74</y><w>16</w><h>3064</h></coordinates><panel_attributes>lt=.</panel_attributes><additional_attributes>8;0;8;3064</additional_attributes></element>
+<element><id>UMLClass</id><coordinates><x>1831</x><y>28</y><w>120</w><h>34</h></coordinates><panel_attributes>PlannedMeal
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>UMLClass</id><coordinates><x>1831</x><y>3138</y><w>120</w><h>34</h></coordinates><panel_attributes>PlannedMeal
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>2021</x><y>74</y><w>16</w><h>3064</h></coordinates><panel_attributes>lt=.</panel_attributes><additional_attributes>8;0;8;3064</additional_attributes></element>
+<element><id>UMLClass</id><coordinates><x>1969</x><y>28</y><w>120</w><h>34</h></coordinates><panel_attributes>Pantry
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>UMLClass</id><coordinates><x>1969</x><y>3138</y><w>120</w><h>34</h></coordinates><panel_attributes>Pantry
+bg=white</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>110</x><y>150</y><w>291</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;291.4;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>110</x><y>134</y><w>291</w><h>24</h></coordinates><panel_attributes>select recipe, enter servings
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>401</x><y>196</y><w>298</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;298.0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>401</x><y>180</y><w>298</w><h>24</h></coordinates><panel_attributes>adjustServings(recipe, servings)
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>401</x><y>270</y><w>298</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>298.0;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>401</x><y>254</y><w>298</w><h>24</h></coordinates><panel_attributes>error
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>110</x><y>316</y><w>291</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>291.4;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>110</x><y>300</y><w>291</w><h>24</h></coordinates><panel_attributes>display error
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>699</x><y>392</y><w>185</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;185.79999999999995;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>699</x><y>376</y><w>185</w><h>24</h></coordinates><panel_attributes>scale(recipe, servings)
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>699</x><y>438</y><w>185</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>185.79999999999995;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>699</x><y>422</y><w>185</w><h>24</h></coordinates><panel_attributes>scaled Recipe
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>401</x><y>484</y><w>298</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>298.0;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>401</x><y>468</y><w>298</w><h>24</h></coordinates><panel_attributes>scaled Recipe
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>110</x><y>530</y><w>291</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>291.4;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>110</x><y>514</y><w>291</w><h>24</h></coordinates><panel_attributes>display recipe
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>110</x><y>642</y><w>291</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;291.4;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>110</x><y>626</y><w>291</w><h>24</h></coordinates><panel_attributes>select ingredient, request substitution
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>401</x><y>688</y><w>298</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;298.0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>401</x><y>672</y><w>298</w><h>24</h></coordinates><panel_attributes>substituteIngredient(recipe, ingredient)
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>699</x><y>734</y><w>346</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;346.19999999999993;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>699</x><y>718</y><w>346</w><h>24</h></coordinates><panel_attributes>findSubstitute(ingredient, profile)
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>699</x><y>808</y><w>346</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>346.19999999999993;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>699</x><y>792</y><w>346</w><h>24</h></coordinates><panel_attributes>none
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>401</x><y>854</y><w>298</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>298.0;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>401</x><y>838</y><w>298</w><h>24</h></coordinates><panel_attributes>error
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>110</x><y>900</y><w>291</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>291.4;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>110</x><y>884</y><w>291</w><h>24</h></coordinates><panel_attributes>display message
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>699</x><y>976</y><w>346</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>346.19999999999993;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>699</x><y>960</y><w>346</w><h>24</h></coordinates><panel_attributes>Substitution
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>699</x><y>1022</y><w>346</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;346.19999999999993;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>699</x><y>1006</y><w>346</w><h>24</h></coordinates><panel_attributes>applySubstitution(recipe, substitution)
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>699</x><y>1068</y><w>346</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>346.19999999999993;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>699</x><y>1052</y><w>346</w><h>24</h></coordinates><panel_attributes>updated Recipe
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>401</x><y>1114</y><w>298</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>298.0;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>401</x><y>1098</y><w>298</w><h>24</h></coordinates><panel_attributes>updated Recipe
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>110</x><y>1160</y><w>291</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>291.4;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>110</x><y>1144</y><w>291</w><h>24</h></coordinates><panel_attributes>display recipe
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>110</x><y>1300</y><w>291</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;291.4;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>110</x><y>1284</y><w>291</w><h>24</h></coordinates><panel_attributes>select recipe
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>401</x><y>1346</y><w>298</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;298.0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>401</x><y>1330</y><w>298</w><h>24</h></coordinates><panel_attributes>calculateRecipeNutrition(recipe)
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>699</x><y>1392</y><w>517</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;517.6999999999999;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>699</x><y>1376</y><w>517</w><h>24</h></coordinates><panel_attributes>calculateRecipe(recipe)
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>699</x><y>1438</y><w>517</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>517.6999999999999;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>699</x><y>1422</y><w>517</w><h>24</h></coordinates><panel_attributes>NutritionInfo
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>110</x><y>1514</y><w>291</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;291.4;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>110</x><y>1498</y><w>291</w><h>24</h></coordinates><panel_attributes>select plan
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>401</x><y>1560</y><w>298</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;298.0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>401</x><y>1544</y><w>298</w><h>24</h></coordinates><panel_attributes>calculatePlanNutrition()
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>699</x><y>1606</y><w>517</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;517.6999999999999;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>699</x><y>1590</y><w>517</w><h>24</h></coordinates><panel_attributes>calculatePlan(plan)
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>1217</x><y>1652</y><w>495</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;495.5;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>1217</x><y>1636</y><w>495</w><h>24</h></coordinates><panel_attributes>getNutrition()
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>1712</x><y>1726</y><w>179</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;179.20000000000005;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>1712</x><y>1710</y><w>179</w><h>24</h></coordinates><panel_attributes>getNutrition()
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>1712</x><y>1772</y><w>179</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>179.20000000000005;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>1712</x><y>1756</y><w>179</w><h>24</h></coordinates><panel_attributes>NutritionInfo
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>1217</x><y>1840</y><w>495</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>495.5;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>1217</x><y>1824</y><w>495</w><h>24</h></coordinates><panel_attributes>NutritionInfo
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>699</x><y>1886</y><w>517</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>517.6999999999999;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>699</x><y>1870</y><w>517</w><h>24</h></coordinates><panel_attributes>NutritionInfo
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>401</x><y>1982</y><w>298</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>298.0;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>401</x><y>1966</y><w>298</w><h>24</h></coordinates><panel_attributes>error
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>110</x><y>2028</y><w>291</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>291.4;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>110</x><y>2012</y><w>291</w><h>24</h></coordinates><panel_attributes>display message
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>401</x><y>2104</y><w>298</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>298.0;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>401</x><y>2088</y><w>298</w><h>24</h></coordinates><panel_attributes>NutritionInfo
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>110</x><y>2150</y><w>291</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>291.4;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>110</x><y>2134</y><w>291</w><h>24</h></coordinates><panel_attributes>display nutrition
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>110</x><y>2262</y><w>291</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;291.4;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>110</x><y>2246</y><w>291</w><h>24</h></coordinates><panel_attributes>select Generate Shopping List
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>401</x><y>2308</y><w>298</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;298.0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>401</x><y>2292</y><w>298</w><h>24</h></coordinates><panel_attributes>generateShoppingList()
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>699</x><y>2354</y><w>689</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;689.1999999999999;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>699</x><y>2338</y><w>689</w><h>24</h></coordinates><panel_attributes>generate(plan, pantry)
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>1388</x><y>2400</y><w>324</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;324.0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>1388</x><y>2384</y><w>324</w><h>24</h></coordinates><panel_attributes>getIngredients()
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>1712</x><y>2446</y><w>179</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;179.20000000000005;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>1712</x><y>2430</y><w>179</w><h>24</h></coordinates><panel_attributes>getIngredients()
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>1712</x><y>2492</y><w>179</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>179.20000000000005;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>1712</x><y>2476</y><w>179</w><h>24</h></coordinates><panel_attributes>List&lt;RecipeIngredient&gt;
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>1388</x><y>2538</y><w>324</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>324.0;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>1388</x><y>2522</y><w>324</w><h>24</h></coordinates><panel_attributes>List&lt;RecipeIngredient&gt;
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>699</x><y>2612</y><w>689</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>689.1999999999999;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>699</x><y>2596</y><w>689</w><h>24</h></coordinates><panel_attributes>error
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>401</x><y>2658</y><w>298</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>298.0;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>401</x><y>2642</y><w>298</w><h>24</h></coordinates><panel_attributes>error
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>110</x><y>2704</y><w>291</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>291.4;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>110</x><y>2688</y><w>291</w><h>24</h></coordinates><panel_attributes>display message
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>1388</x><y>2780</y><w>34</w><h>22</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;0;34;0;34;20;0;20</additional_attributes></element>
+<element><id>Text</id><coordinates><x>1426</x><y>2778</y><w>165</w><h>22</h></coordinates><panel_attributes>consolidate duplicates
+halign=left</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>1388</x><y>2838</y><w>641</w><h>20</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;10;641.2;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>1388</x><y>2822</y><w>641</w><h>24</h></coordinates><panel_attributes>findItem(name)
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>1388</x><y>2884</y><w>641</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>641.2;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>1388</x><y>2868</y><w>641</w><h>24</h></coordinates><panel_attributes>PantryItem
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>1388</x><y>2930</y><w>34</w><h>22</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>0;0;34;0;34;20;0;20</additional_attributes></element>
+<element><id>Text</id><coordinates><x>1426</x><y>2928</y><w>284</w><h>22</h></coordinates><panel_attributes>subtract pantry, keep missing quantities
+halign=left</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>699</x><y>2988</y><w>689</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>689.1999999999999;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>699</x><y>2972</y><w>689</w><h>24</h></coordinates><panel_attributes>ShoppingList
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>401</x><y>3034</y><w>298</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>298.0;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>401</x><y>3018</y><w>298</w><h>24</h></coordinates><panel_attributes>ShoppingList
+halign=center</panel_attributes><additional_attributes/></element>
+<element><id>Relation</id><coordinates><x>110</x><y>3080</y><w>291</w><h>20</h></coordinates><panel_attributes>lt=.&gt;</panel_attributes><additional_attributes>291.4;10;0;10</additional_attributes></element>
+<element><id>Text</id><coordinates><x>110</x><y>3064</y><w>291</w><h>24</h></coordinates><panel_attributes>display shopping list
+halign=center</panel_attributes><additional_attributes/></element>
+</diagram>
