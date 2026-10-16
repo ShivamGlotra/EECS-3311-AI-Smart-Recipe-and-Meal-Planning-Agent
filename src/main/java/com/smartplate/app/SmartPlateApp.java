@@ -1,8 +1,7 @@
 package com.smartplate.app;
 
-import com.smartplate.ai.AIAdapter;
-import com.smartplate.ai.AIClient;
 import com.smartplate.ai.AIModel;
+import com.smartplate.ai.AIModelFactory;
 import com.smartplate.ai.MockAIModel;
 import com.smartplate.domain.PantryAction;
 import com.smartplate.domain.PantryItem;
@@ -21,10 +20,12 @@ import java.util.List;
  * <pre>
  *   java -jar smartplate.jar            GUI (or CLI if no display is available)
  *   java -jar smartplate.jar --cli      command-line interface
- *   java -jar smartplate.jar --mock     force the offline Mock AI even if an API key is set
+ *   java -jar smartplate.jar --mock     force the offline Mock AI whatever the environment says
  *   java -jar smartplate.jar --empty    start with an empty pantry
  * </pre>
- * The real AI is used when ANTHROPIC_API_KEY is set; otherwise the Mock AI is used.
+ * Which AI is used is decided by AIModelFactory from the environment:
+ * SMARTPLATE_AI_PROVIDER = auto (default) | mock | anthropic | ollama.
+ * With "auto" the real AI is used when ANTHROPIC_API_KEY is set, otherwise the Mock AI.
  */
 public final class SmartPlateApp {
 
@@ -33,7 +34,15 @@ public final class SmartPlateApp {
 
     public static void main(String[] args) {
         List<String> options = Arrays.asList(args);
-        SmartRecipeFacade facade = SmartRecipeFacade.create(chooseModel(options.contains("--mock")));
+        AIModel model;
+        try {
+            model = chooseModel(options.contains("--mock"));
+        } catch (IllegalArgumentException e) {
+            // e.g. a mistyped SMARTPLATE_AI_PROVIDER: say so clearly instead of a stack trace
+            System.err.println(e.getMessage());
+            return;
+        }
+        SmartRecipeFacade facade = SmartRecipeFacade.create(model);
         if (!options.contains("--empty")) {
             for (PantryItem item : SampleData.pantry()) {
                 facade.managePantry(PantryAction.ADD, item);
@@ -46,12 +55,8 @@ public final class SmartPlateApp {
         }
     }
 
-    /** Real AI (Adapter -> Client) if configured, otherwise the offline mock. */
+    /** The --mock flag always wins; otherwise the environment decides (see AIModelFactory). */
     static AIModel chooseModel(boolean forceMock) {
-        AIClient client = AIClient.fromEnvironment();
-        if (!forceMock && client.isConfigured()) {
-            return new AIAdapter(client);
-        }
-        return new MockAIModel();
+        return forceMock ? new MockAIModel() : AIModelFactory.fromEnvironment();
     }
 }

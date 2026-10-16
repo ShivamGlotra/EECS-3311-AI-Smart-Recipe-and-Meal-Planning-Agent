@@ -39,7 +39,9 @@ how that report was written.
 | Facade | `facade/SmartRecipeFacade.java` | Yes | One method per feature, as in the diagram |
 | User interfaces | `presentation/*`, `app/*` | Yes | Swing GUI and CLI; both use only the facade |
 | GUI redesign ("Clean Slate", light mode) | `presentation/MealPlannerGUI.java`, `presentation/gui/**`, FlatLaf in `pom.xml` | Yes | Claude Code proposed three design directions as mockups; **the team chose Direction B**, and Claude Code then implemented it in Swing. The IBM Plex font files are IBM's (SIL Open Font License), not AI-generated. |
-| Tests | `src/test/**` | Yes | 88 JUnit 5 tests (14 of them for the GUI) |
+| AI provider choice | `ai/AIModelFactory.java`, `app/SmartPlateApp.java` (`chooseModel` and the error handling in `main`) | **No** (written by the team) | The team wrote the factory that picks mock / anthropic / ollama from `SMARTPLATE_AI_PROVIDER`; Claude Code added it to the project unchanged |
+| Local model adapter | `ai/OllamaAdapter.java` | Yes | Written by Claude Code to the constructor and constants the team's factory expects |
+| Tests | `src/test/**` | Yes | 99 JUnit 5 tests (14 of them for the GUI; 11 for the factory and the Ollama adapter) |
 | Documentation | `docs/IMPLEMENTATION.md`, this file | Yes | Code explanation and this disclosure |
 
 **Sample data caveat:** the recipes, quantities and nutrition values in `SampleData.java` were made
@@ -55,11 +57,15 @@ These checks were run during generation and can be repeated by anyone:
 | Check | How to repeat | Result at time of writing |
 |---|---|---|
 | Compiles | `mvn compile` | Success |
-| Unit tests | `mvn test` | 88 tests, 0 failures, 0 errors |
+| Unit tests | `mvn test` | 99 tests, 0 failures, 0 errors |
 | Runnable jar | `mvn package` then `java -jar target/smartplate-1.0.0.jar --cli` | Starts; commands work |
 | Scripted CLI session covering F01–F10 | See `MealPlannerCLITest` and the session in `docs/IMPLEMENTATION.md` §1 | Expected output |
 | GUI | Launched on a virtual display and driven through every state (empty, error, plan, edit, shopping list, nutrition, recipes, pantry error, preferences error) | Works; screenshots in `docs/screenshots/`. One bug was found by the new GUI tests and fixed (the pantry "Added …" message was cleared by the row selection). |
 | Agent revision behavior | `MealPlanningAgentTest` (scripted bad AI answers) | Invented ids and constraint violations are rejected; exactly one revision; failure reported after that |
+
+**Ollama adapter:** tested against a fake Ollama server that answers `/api/chat` in Ollama's JSON
+format (`OllamaAdapterTest`), and the packaged jar was run against such a fake server. It was **not**
+run against a real local model while generating the code; the team should confirm it once with their own model.
 
 **Not verified:** the live call to the real Claude API (`AIAdapter` → `AIClient`). No API key was
 available while generating the code. The request-building code is unit tested
@@ -97,6 +103,7 @@ code (`ConstraintValidator`) checks every answer before the user sees it.
 | Mode | When | Network / cost |
 |---|---|---|
 | `MockAIModel` | Default; always used in tests | None |
-| `AIAdapter` → `AIClient` → Claude (Anthropic API) | Only when the environment variable `ANTHROPIC_API_KEY` is set | Network call; billed to the key's owner |
+| `AIAdapter` → `AIClient` → Claude (Anthropic API) | `SMARTPLATE_AI_PROVIDER=anthropic`, or the default `auto` when `ANTHROPIC_API_KEY` is set | Network call; billed to the key's owner |
+| `OllamaAdapter` → a local model through Ollama | Only with `SMARTPLATE_AI_PROVIDER=ollama` | Runs on the user's machine; no cost, nothing leaves the machine with the default URL |
 
 No API key is stored in the repository.

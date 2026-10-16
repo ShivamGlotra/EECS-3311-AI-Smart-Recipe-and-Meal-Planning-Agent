@@ -181,7 +181,7 @@ the facade.
 
 ```bash
 mvn compile                          # compile only (like tsc)
-mvn test                             # run all 88 tests
+mvn test                             # run all 99 tests
 mvn package                          # build target/smartplate-1.0.0.jar (includes all libraries)
 java -jar target/smartplate-1.0.0.jar            # open the desktop app
 java -jar target/smartplate-1.0.0.jar --cli      # command-line version
@@ -191,8 +191,15 @@ mvn test -Dtest=MealPlanningAgentTest            # run one test class
 mvn test -Dtest=GuiPanelsTest#createEditAndUndoMarkTheChangedDay   # run one test
 ```
 
-**Real AI:** set the environment variable `ANTHROPIC_API_KEY` before starting. Without it the app uses
-`MockAIModel` (offline, free, deterministic). Optional: `SMARTPLATE_AI_MODEL` changes the model id.
+**Which AI:** the environment variable `SMARTPLATE_AI_PROVIDER` decides (read by `ai/AIModelFactory.java`):
+`auto` (default: Claude if `ANTHROPIC_API_KEY` is set, else the offline `MockAIModel`), `mock`,
+`anthropic`, or `ollama` (a local model; optional `OLLAMA_MODEL`, default `llama3.2`, and `OLLAMA_URL`,
+default `http://localhost:11434`). `SMARTPLATE_AI_MODEL` changes the Claude model id. It's like
+`process.env` in Node:
+```bash
+SMARTPLATE_AI_PROVIDER=ollama OLLAMA_MODEL=qwen2.5:7b java -jar target/smartplate-1.0.0.jar
+```
+In IntelliJ, set them in *Run → Edit Configurations → Environment variables*.
 
 **IntelliJ:**
 - File → Open → choose `pom.xml` → *Open as Project*. Set File → Project Structure → SDK = 21.
@@ -231,6 +238,8 @@ src/main/java/com/smartplate/
     AIModel.java                      ADAPTER target interface: generate(prompt) -> text
     AIAdapter.java                    ADAPTER: turns a prompt into an Anthropic API request and back
     AIClient.java                     ADAPTEE: the real Anthropic SDK client (API key from env var)
+    OllamaAdapter.java                ADAPTER #2: a local model through Ollama's /api/chat (JDK HttpClient)
+    AIModelFactory.java               picks mock / anthropic / ollama from SMARTPLATE_AI_PROVIDER
     MockAIModel.java                  offline fake AI (heuristic / scripted / failing)
     PromptFormat.java                 the "KEY: value" text protocol between agent and AI
     AIServiceException.java           "the AI service failed" error
@@ -272,7 +281,7 @@ src/main/java/com/smartplate/
       Icons.java                      small icons drawn in code
       TaskRunner.java                 runs AI calls in the background (or directly in tests)
 
-src/test/java/com/smartplate/         16 test classes, 88 tests (see section 12)
+src/test/java/com/smartplate/         18 test classes, 99 tests (see section 12)
 ```
 
 ---
@@ -350,6 +359,13 @@ State it owns: `profile`, `pantry`, `currentPlan`, `lastSubstitution`.
   then `extractText` (:78) gets the text back, or throws `AIServiceException`.
 - `AIClient` (`ai/AIClient.java:22`): reads `ANTHROPIC_API_KEY` / `SMARTPLATE_AI_MODEL`
   (`fromEnvironment` :38) and calls the Anthropic SDK (`sendRequest` :52).
+- `OllamaAdapter` (`ai/OllamaAdapter.java:25`): the same job for a local model. `generate` (:60) POSTs
+  `buildRequestBody` (:85: model, `stream: false`, the same `SYSTEM_PROMPT`, the prompt, temperature 0.2)
+  to `<OLLAMA_URL>/api/chat`; `extractText` (:97) reads `message.content`, drops `<think>…</think>`
+  (`stripThinking` :119) and maps 404 → "ollama pull <model>", other HTTP errors, connection refused
+  and timeouts (180 s) to `AIServiceException`.
+- `AIModelFactory` (`ai/AIModelFactory.java:30` `create(env)`): a `switch` on `SMARTPLATE_AI_PROVIDER`.
+  It takes the environment as a `Map`, so tests pass a fake one. `auto` never picks Ollama.
 - `MockAIModel` (`ai/MockAIModel.java:32`): same interface, no network.
 
 ### 7.3 Strategy — `strategy/`
@@ -428,7 +444,7 @@ The panel also computes "Covered by your pantry" (plan ingredients you have that
 
 ### 8.4 CLI: typing `plan weekday dinners`
 
-`app/SmartPlateApp.java:34` `main` → `MealPlannerCLI.runLoop` (:72) reads a line →
+`app/SmartPlateApp.java:35` `main` → `MealPlannerCLI.runLoop` (:72) reads a line →
 `handle` (:108) → `case "plan"` (:140) → `facade.createMealPlan(...)` → `printPlan` (:319).
 The same facade method as the GUI, so the behaviour is identical.
 
@@ -437,9 +453,10 @@ The same facade method as the GUI, so the behaviour is identical.
 ## 9. File-by-file reference: functions and algorithms
 
 ### 9.1 `app/SmartPlateApp.java`
-- `main(args)` (:34): picks the AI (`chooseModel`, :50: real `AIAdapter` if `ANTHROPIC_API_KEY` is set
-  and `--mock` isn't given, else `MockAIModel`), creates the facade, adds `SampleData.pantry()` unless
-  `--empty`, then starts the CLI (`--cli` or no screen) or the GUI.
+- `main(args)` (:35): picks the AI (`chooseModel`, :59: `MockAIModel` if `--mock` is given, otherwise
+  `AIModelFactory.fromEnvironment()`). A mistyped `SMARTPLATE_AI_PROVIDER` throws
+  `IllegalArgumentException`; `main` prints its message and exits. Then it creates the facade, adds
+  `SampleData.pantry()` unless `--empty`, and starts the CLI (`--cli` or no screen) or the GUI.
 
 ### 9.2 `facade/SmartRecipeFacade.java`
 Every method validates its input, calls one subsystem, and returns or throws. Notes:
@@ -665,7 +682,7 @@ Errors print as `Error: <message>`; the loop never crashes on a `SmartPlateExcep
 
 ## 12. Tests
 
-`mvn test` runs **88 tests** in 16 classes, all offline (Mock AI):
+`mvn test` runs **99 tests** in 18 classes, all offline (no real AI is called):
 
 | Test class | What it protects |
 |---|---|
@@ -676,6 +693,8 @@ Errors print as `Error: <message>`; the loop never crashes on a `SmartPlateExcep
 | `agent/MealPlanningAgentTest` | the agent loop: invented ids rejected, **exactly one** revision, AI failure |
 | `strategy/StrategyTest`, `command/CommandHistoryTest`, `service/ServicesTest` | patterns + services |
 | `ai/AIModelTest` | adapter request building, mock modes |
+| `ai/AIModelFactoryTest` | every `SMARTPLATE_AI_PROVIDER` value, defaults, unknown value |
+| `ai/OllamaAdapterTest` | the Ollama adapter against a fake Ollama server (a tiny `HttpServer` in the test): request JSON, `<think>` removal, 404/500/empty/unreachable errors, and the whole agent through it |
 | `facade/SmartRecipeFacadeTest` | all 10 features end to end |
 | `presentation/MealPlannerCLITest` | a scripted CLI session |
 | `presentation/gui/GuiPanelsTest` | every GUI tab, headless (no window needed) |
@@ -743,14 +762,15 @@ Order matters: the **first** one that fits the profile wins.
 - Spacing of a panel: the `BorderFactory.createEmptyBorder(top, left, bottom, right)` calls (≈ CSS padding).
 
 ### 13.8 Change what the AI is told
-- Global rules: `AIAdapter.SYSTEM_PROMPT` (`ai/AIAdapter.java:26`).
+- Global rules: `AIAdapter.SYSTEM_PROMPT` (`ai/AIAdapter.java:26`). `OllamaAdapter` sends the same text.
 - Per-request content: `MealPlanningAgent.newPrompt` (:310) and the `RESPONSE_FORMAT` text in
   `recommend` / `createPlan` / `editPlan`. If you change the format, update the parsers
   (`parsePlan`, `parseIdList`) **and** `MockAIModel` so offline mode still works.
 
 ### 13.9 Use another AI provider
-Write a new adaptee client and a new class implementing `AIModel` (like `AIAdapter`), then choose it in
-`SmartPlateApp.chooseModel` (:50). The agent doesn't change. That's the point of the Adapter pattern.
+Write a new class implementing `AIModel` (like `AIAdapter` or `OllamaAdapter`), then add a `case` for it
+in `AIModelFactory.create` (:30) and a test in `AIModelFactoryTest`. The agent doesn't change. That's the
+point of the Adapter pattern; `OllamaAdapter` was added exactly this way.
 
 ### 13.10 Add a GUI tab
 New `JPanel` class in `presentation/gui/` that takes the facade in its constructor (copy
@@ -782,6 +802,9 @@ New `JPanel` class in `presentation/gui/` that takes the facade in its construct
 | Button stays disabled / table not updated | the panel's `updateButtons` / `refreshPlan` / `render` (no auto re-render!) |
 | Window looks unstyled | `Theme.install()` not called, or fonts missing from `resources/fonts` |
 | Real AI errors (503 / "No API key") | env var `ANTHROPIC_API_KEY`, `AIAdapter.generate` (:42) error mapping |
+| Wrong AI used / "Unknown SMARTPLATE_AI_PROVIDER" | the env var's spelling; `AIModelFactory.create` (:30). The model name is shown in the GUI header and the CLI's first line |
+| "Could not reach Ollama" / "ollama pull" / timeout | `ollama serve` running? model pulled? `OLLAMA_URL`; `OllamaAdapter.generate` (:60) |
+| Local model keeps failing validation | small models are weaker: try a bigger one (`OLLAMA_MODEL`), check `trace` in the CLI |
 
 ### 14.3 Known issues and limitations (good first fixes)
 1. **Fractional pieces in the shopping list** ("13.5 pcs garlic") when a 4-serving recipe is planned
@@ -807,8 +830,9 @@ New `JPanel` class in `presentation/gui/` that takes the facade in its construct
    for allergies, but maybe too strict for dislikes.
 10. **Plan edits are never revised.** `editPlan` follows SD05 (one AI answer). If you want a retry,
     copy the loop from `createPlan`, and update SD05 too.
-11. **The real AI path was never run live** (no key in development). Only request building and
-    error handling are unit-tested.
+11. **The real AI paths were never run live during development** (no API key, no local model).
+    Claude: only request building and error handling are unit-tested. Ollama: tested against a fake
+    Ollama server that speaks the same `/api/chat` JSON, so check it once with your own model.
 
 ### 14.4 Common Java errors and what they mean
 | Error | Meaning / fix |

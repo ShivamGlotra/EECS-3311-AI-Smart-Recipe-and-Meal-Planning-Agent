@@ -1,6 +1,7 @@
 > **Implementation (Stage 2).** The design below is implemented in Java under `src/`.
 > Build and test with `mvn test`. Run with `mvn package` and then `java -jar target/smartplate-1.0.0.jar`
-> (add `--cli` for the command line). It runs offline with a mock AI; set `ANTHROPIC_API_KEY` to use Claude.
+> (add `--cli` for the command line). It runs offline with a mock AI; set `ANTHROPIC_API_KEY` to use Claude, or
+> `SMARTPLATE_AI_PROVIDER=ollama` (plus optional `OLLAMA_MODEL`) to use a local model through Ollama.
 > - Code explanation: [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)
 > - Where AI helped (disclosure for the instructor): [docs/AI_USAGE.md](docs/AI_USAGE.md)
 > - Developer guide (structure, every function, how to change and debug): [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)

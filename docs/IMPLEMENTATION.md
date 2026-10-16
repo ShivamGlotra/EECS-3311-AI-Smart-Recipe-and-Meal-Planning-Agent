@@ -12,7 +12,7 @@ runs through the code.
 Requirements: **Java 17+** and **Maven 3.8+**. No other installation is needed.
 
 ```bash
-mvn test                 # compile and run the 88 JUnit 5 tests
+mvn test                 # compile and run the 99 JUnit 5 tests
 mvn package              # builds target/smartplate-1.0.0.jar (includes all dependencies)
 
 java -jar target/smartplate-1.0.0.jar          # desktop GUI (falls back to the CLI if there is no display)
@@ -25,14 +25,29 @@ You can also run it without packaging: `mvn -q compile exec:java -Dexec.args="--
 
 ### Which AI model is used?
 
-| Situation | AI model used |
-|---|---|
-| `ANTHROPIC_API_KEY` is **not** set (default for marking and testing) | `MockAIModel`, offline, no network, no cost |
-| `ANTHROPIC_API_KEY` is set | `AIAdapter` → `AIClient` → Claude through the official Anthropic Java SDK |
-| `--mock` flag | `MockAIModel`, even if a key is set |
+`ai/AIModelFactory.java` chooses the model from the environment variable `SMARTPLATE_AI_PROVIDER`:
 
-The model id can be changed with `SMARTPLATE_AI_MODEL` (default `claude-opus-5-5`). The key is only
-read from the environment and never appears in the source code. **Everything works without a key.**
+| `SMARTPLATE_AI_PROVIDER` | AI model used |
+|---|---|
+| not set, or `auto` (default) | `AIAdapter` → Claude if `ANTHROPIC_API_KEY` is set, otherwise `MockAIModel` (offline, no network, no cost) |
+| `mock` | `MockAIModel` |
+| `anthropic` | `AIAdapter` → `AIClient` → Claude through the official Anthropic Java SDK (needs `ANTHROPIC_API_KEY`) |
+| `ollama` | `OllamaAdapter` → a local model served by [Ollama](https://ollama.com) |
+| anything else | the app prints an error and stops |
+| `--mock` flag | `MockAIModel`, whatever the variable says |
+
+Optional settings: `SMARTPLATE_AI_MODEL` (Claude model id, default `claude-opus-5-5`), `OLLAMA_MODEL`
+(default `llama3.2`) and `OLLAMA_URL` (default `http://localhost:11434`). Ollama is never picked by
+`auto`, so a local server that happens to be running cannot change the behavior silently. The API
+key is only read from the environment and never appears in the source code. **Everything works
+without a key.**
+
+To use a local model:
+
+```bash
+ollama pull llama3.2                       # once; any chat model works, e.g. qwen2.5:7b
+SMARTPLATE_AI_PROVIDER=ollama OLLAMA_MODEL=llama3.2 java -jar target/smartplate-1.0.0.jar
+```
 
 ### A quick CLI session
 
@@ -100,7 +115,7 @@ src/main/java/com/smartplate/
 └── service/        RecipeRepository (Data layer), NutritionService, ServingScaler,
                     SubstitutionService, ShoppingListService, SampleData
 src/main/resources/fonts/       IBM Plex Sans / Mono (SIL Open Font License, OFL.txt)
-src/test/java/com/smartplate/   16 JUnit 5 test classes, 88 tests
+src/test/java/com/smartplate/   18 JUnit 5 test classes, 99 tests
 ```
 
 Each package matches a package in the class diagram (`docs/uml-diagrams/class/class-diagram.puml`).
@@ -140,17 +155,20 @@ Errors are reported in one way: every expected problem throws a `SmartPlateExcep
 message can be shown to the user. The CLI prints it as `Error: ...`; the GUI shows it in a red
 message box (and, on forms, next to the field it is about).
 
-### 3.2 Adapter — `ai/AIModel.java`, `ai/AIAdapter.java`, `ai/AIClient.java`, `ai/MockAIModel.java`
+### 3.2 Adapter — `ai/AIModel.java`, `ai/AIAdapter.java`, `ai/AIClient.java`, `ai/OllamaAdapter.java`, `ai/MockAIModel.java`
 
 | Role | Class | What it does |
 |---|---|---|
 | Target | `AIModel` | `String generate(String prompt)`: the only interface the agent knows |
 | Adapter | `AIAdapter` | Turns a prompt into the SDK's `MessageCreateParams` (`buildRequest`), and the SDK's `Message` back into plain text (`extractText`). Turns SDK exceptions into `AIServiceException`. |
 | Adaptee | `AIClient` | Provider-specific client. `sendRequest(MessageCreateParams) : Message`, built on the official Anthropic Java SDK. Reads the key and model from the environment. |
+| Second adapter | `OllamaAdapter` | Same idea for a local model: turns a prompt into Ollama's `/api/chat` JSON (`buildRequestBody`) and the JSON reply back into text (`extractText`), using the JDK's `HttpClient`. HTTP and connection errors become `AIServiceException`. |
 | Alternative target implementation | `MockAIModel` | Offline model with the same interface (see 4.3) |
 | Client | `MealPlanningAgent` | Holds an `AIModel`; never sees SDK types |
+| Chooser | `AIModelFactory` | Picks one implementation from `SMARTPLATE_AI_PROVIDER` (see §1). `SmartPlateApp` calls it once at start-up. |
 
-To support another provider you write a new client and adapter. `MealPlanningAgent` does not change.
+`OllamaAdapter` shows the point of the pattern: a second provider was added without changing
+`MealPlanningAgent`, the facade or the UI.
 
 ### 3.3 Strategy — `strategy/*`
 
@@ -294,6 +312,14 @@ fallback. `extractText()` treats a refusal or an empty answer as `AIServiceExcep
 agent validates everything the model says, a wrong or badly formatted answer leads to a revision or
 a reported failure, never to an invalid plan.
 
+`OllamaAdapter` sends the same system prompt and the prompt as a chat request with `stream: false`
+and a low temperature (0.2). Reasoning models such as `deepseek-r1` or `qwen3` write their thinking
+inside `<think>…</think>` before the answer; the adapter removes that part. Small local models make
+more mistakes than Claude, and the same validation and single revision catch them. Errors are
+reported in plain words: Ollama not running ("Is it running (ollama serve)?"), model not downloaded
+("Run: ollama pull <model>"), timeout (180 s; the first call can be slow while the model loads),
+or an empty answer.
+
 ---
 
 ## 5. Feature walkthroughs
@@ -338,9 +364,11 @@ Each feature lists its entry point, the classes involved, and where its tests ar
 mvn test
 ```
 
-* 88 tests in 16 classes. They cover every feature, every pattern, and the main error flows from
+* 99 tests in 18 classes. They cover every feature, every pattern, and the main error flows from
   the use-case descriptions.
 * All tests use `MockAIModel`, so they need no network or API key and always give the same result.
+  `OllamaAdapterTest` runs the Ollama adapter against a small fake Ollama server inside the test
+  (no real model needed), and `AIModelFactoryTest` checks every `SMARTPLATE_AI_PROVIDER` value.
 * `MealPlanningAgentTest` uses scripted answers to test the agent's behavior: rejecting invented
   ids, revising once with the violation messages, failing after one revision, and reporting AI
   service failures.
