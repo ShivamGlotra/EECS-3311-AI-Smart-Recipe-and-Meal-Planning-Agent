@@ -1,7 +1,7 @@
 # SmartPlate — Implementation Guide (Code Explanation)
 
 This document explains the Java implementation of the design in the Stage 1 report
-([README.md](../README.md)). It covers how to build and run the project, how the code maps to the
+([SmartPlate_Stage1_Report_FINAL.md](../SmartPlate_Stage1_Report_FINAL.md)). It covers how to build and run the project, how the code maps to the
 class diagram, how each design pattern is implemented, and how each of the ten features (F01–F10)
 runs through the code.
 

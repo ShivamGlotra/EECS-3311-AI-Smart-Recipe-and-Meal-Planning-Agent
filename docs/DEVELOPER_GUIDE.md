@@ -223,7 +223,8 @@ IntelliJ runs the app from the project folder, so it finds `.env` too.
 
 ```
 pom.xml                         build file: Java 17, JUnit 5, Anthropic SDK, FlatLaf, fat-jar packaging
-README.md                       the Stage 1 design report (+ a short pointer to the docs)
+README.md                       project title, setup steps and links to the documents
+SmartPlate_Stage1_Report_FINAL.md  the Stage 1 design report
 docs/
   STAGE2_REPORT.md              Stage 2 report: AI tools, collaboration log, traceability, design changes
   IMPLEMENTATION.md             shorter code explanation for the instructor

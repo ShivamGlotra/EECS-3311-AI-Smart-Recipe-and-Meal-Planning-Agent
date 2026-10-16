@@ -17,7 +17,7 @@ different uses of AI apart:
 | LLM model | _[Team]_ as shown in Claude Code's session details; recorded in [`STAGE2_REPORT.md` §3](STAGE2_REPORT.md#3-ai-tools-and-models-9) |
 | Used for | Generating the Java implementation, the unit tests, the sample data and the documentation in this branch |
 | Input given to the tool | The team's **Stage 1 design report and UML diagrams** (branch `stage-1Fix`: `README.md`, `docs/uml-diagrams/**`, since moved to `docs/plantuml-diagrams/`; the final UMLet versions are in `docs/umlet-diagrams/`), plus the instruction to implement every feature as described in the report, explain the code, and document the AI assistance |
-| Where its output lives | The Stage 2 commits on the `claude/nifty-albattani-1lnuay` and `claude/swing-ui-direction-b` branches: `pom.xml`, `src/**`, `.env.example`, `docs/IMPLEMENTATION.md`, `docs/DEVELOPER_GUIDE.md`, `docs/STAGE2_REPORT.md` (draft), `docs/AI_USAGE.md`, `docs/screenshots/**`, and the "Implementation" section at the top of `README.md`. Exceptions written by the team are listed in §2. |
+| Where its output lives | The Stage 2 commits on the `claude/nifty-albattani-1lnuay` and `claude/swing-ui-direction-b` branches: `pom.xml`, `src/**`, `.env.example`, `docs/IMPLEMENTATION.md`, `docs/DEVELOPER_GUIDE.md`, `docs/STAGE2_REPORT.md` (draft), `docs/AI_USAGE.md`, `docs/screenshots/**`, and the setup and documents sections of `README.md`. Exceptions written by the team are listed in §2. |
 
 The Stage 1 report (requirements, features F01–F10, use cases, class and sequence diagrams, and the
 choice of the five design patterns) was the **input** to the tool. This disclosure does not cover
