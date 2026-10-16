@@ -217,6 +217,13 @@ IntelliJ runs the app from the project folder, so it finds `.env` too.
   `MealPlanningAgent.createPlan` (:154), `ConstraintValidator.validateRecipe` (:23).
 - Run a test: open the test file and click ▶ next to the class or method.
 
+**VS Code** (the closest thing to `package.json` scripts): `.vscode/tasks.json` defines
+*SmartPlate: run app*, *run CLI*, *run with mock AI*, *test*, *build jar* and *clean*. Run them from
+*Terminal → Run Task…*, with Ctrl/Cmd+Shift+B (build jar), or as buttons in the **Task Runner** view
+at the bottom of the Explorer (install the recommended extensions VS Code suggests when you open the
+folder). For breakpoints use the **Run and Debug** panel: `.vscode/launch.json` has *SmartPlate: app*,
+*CLI* and *app with mock AI* (F5).
+
 ---
 
 ## 5. Repository map: every file in one line
@@ -224,6 +231,7 @@ IntelliJ runs the app from the project folder, so it finds `.env` too.
 ```
 pom.xml                         build file: Java 17, JUnit 5, Anthropic SDK, FlatLaf, fat-jar packaging
 README.md                       project title, setup steps and links to the documents
+.vscode/                        shared VS Code tasks (run, test, build), debug configs, recommended extensions
 SmartPlate_Stage1_Report_FINAL.md  the Stage 1 design report
 docs/
   STAGE2_REPORT.md              Stage 2 report: AI tools, collaboration log, traceability, design changes

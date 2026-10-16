@@ -12,6 +12,9 @@ This project is code in java and is a customized AI agent that helps user in dec
    `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` and/or `OLLAMA_MODEL` for a local Ollama model. Start the app from
    the project folder and pick the model in the **AI model** box at the top right of the window.
    Without a `.env` the app uses the offline Mock AI.
+5. *VS Code:* the same commands are ready-made tasks. Use *Terminal → Run Task…* → `SmartPlate: …`,
+   or the **Task Runner** view at the bottom of the Explorer (accept the recommended extensions when
+   VS Code offers them). Press F5 to run with the debugger.
 
 ## Documents
 
