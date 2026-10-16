@@ -62,6 +62,37 @@ class AIModelFactoryTest {
     }
 
     @Test
+    void geminiUsesItsKeyAndModel() {
+        GeminiAdapter gemini = (GeminiAdapter) AIModelFactory.create(env(AIModelFactory.PROVIDER_VARIABLE, "gemini",
+                GeminiAdapter.API_KEY_VARIABLE, "g-key", GeminiAdapter.MODEL_VARIABLE, "gemini-test"));
+        assertTrue(gemini.isConfigured());
+        assertEquals("Gemini (gemini-test)", gemini.getName());
+        GeminiAdapter defaults = (GeminiAdapter) AIModelFactory.create(env(AIModelFactory.PROVIDER_VARIABLE, "gemini"));
+        assertEquals(GeminiAdapter.DEFAULT_MODEL, defaults.getModel());
+    }
+
+    @Test
+    void autoPrefersClaudeThenGemini() {
+        assertInstanceOf(GeminiAdapter.class, AIModelFactory.create(env(GeminiAdapter.API_KEY_VARIABLE, "g-key")));
+        assertInstanceOf(AIAdapter.class, AIModelFactory.create(
+                env(GeminiAdapter.API_KEY_VARIABLE, "g-key", AIClient.API_KEY_VARIABLE, "a-key")));
+    }
+
+    @Test
+    void reportsMissingKeysAndKnowsEachModelsProvider() {
+        Map<String, String> none = env();
+        assertTrue(AIModelFactory.missingSetting("gemini", none).contains(GeminiAdapter.API_KEY_VARIABLE));
+        assertTrue(AIModelFactory.missingSetting("anthropic", none).contains(AIClient.API_KEY_VARIABLE));
+        assertEquals(null, AIModelFactory.missingSetting("mock", none));
+        assertEquals(null, AIModelFactory.missingSetting("ollama", none));
+        assertEquals(null, AIModelFactory.missingSetting("gemini", env(GeminiAdapter.API_KEY_VARIABLE, "k")));
+
+        for (String provider : AIModelFactory.PROVIDERS) {
+            assertEquals(provider, AIModelFactory.providerOf(AIModelFactory.forProvider(provider, none)));
+        }
+    }
+
+    @Test
     void anUnknownProviderIsAClearError() {
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
                 () -> AIModelFactory.create(env(AIModelFactory.PROVIDER_VARIABLE, "olama")));
