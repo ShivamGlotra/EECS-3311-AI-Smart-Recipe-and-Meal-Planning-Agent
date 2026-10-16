@@ -223,7 +223,8 @@ docs/
   AI_USAGE.md                   where AI helped (disclosure for the professor)
   DEVELOPER_GUIDE.md            this file
   screenshots/                  GUI screenshots
-  uml-diagrams/                 class, use-case and sequence diagrams (PlantUML + PNG)
+  umlet-diagrams/               final Stage 1 class, use-case and sequence diagrams (UMLet .uxf + PNG)
+  plantuml-diagrams/            earlier versions of the same diagrams (PlantUML + PNG)
 src/main/resources/fonts/       IBM Plex fonts used by the GUI (+ OFL.txt licence)
 
 src/main/java/com/smartplate/

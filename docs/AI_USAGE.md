@@ -15,7 +15,7 @@ different uses of AI apart:
 |---|---|
 | Tool | **Claude Code**, Anthropic's AI coding assistant, used through claude.ai/code |
 | Used for | Generating the Java implementation, the unit tests, the sample data and the documentation in this branch |
-| Input given to the tool | The team's **Stage 1 design report and UML diagrams** (branch `stage-1Fix`: `README.md`, `docs/uml-diagrams/**`), plus the instruction to implement every feature as described in the report, explain the code, and document the AI assistance |
+| Input given to the tool | The team's **Stage 1 design report and UML diagrams** (branch `stage-1Fix`: `README.md`, `docs/uml-diagrams/**`, since moved to `docs/plantuml-diagrams/`; the final UMLet versions are in `docs/umlet-diagrams/`), plus the instruction to implement every feature as described in the report, explain the code, and document the AI assistance |
 | Where its output lives | Every file added in the Stage 2 implementation commit: `pom.xml`, `src/**`, `docs/IMPLEMENTATION.md`, `docs/AI_USAGE.md`, `docs/screenshots/**`, and the short "Implementation" section at the top of `README.md` |
 
 The Stage 1 report (requirements, features F01–F10, use cases, class and sequence diagrams, and the

@@ -118,7 +118,7 @@ src/main/resources/fonts/       IBM Plex Sans / Mono (SIL Open Font License, OFL
 src/test/java/com/smartplate/   18 JUnit 5 test classes, 99 tests
 ```
 
-Each package matches a package in the class diagram (`docs/uml-diagrams/class/class-diagram.puml`).
+Each package matches a package in the class diagram (`docs/umlet-diagrams/class/SmartPlate_ClassDiagram.uxf`).
 Every class and method in the class diagram exists in the code under the same name.
 
 ### The layers and the call flow
