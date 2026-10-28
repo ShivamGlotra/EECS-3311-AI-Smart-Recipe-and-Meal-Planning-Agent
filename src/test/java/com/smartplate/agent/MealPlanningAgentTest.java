@@ -71,11 +71,13 @@ class MealPlanningAgentTest {
 
     @Test
     void dietInTheRequestIsEnforcedEvenIfNotInTheProfile() {
-        // the AI suggests a non-vegan dish twice; the request said vegan, so it must be rejected
+        // the AI suggests a non-vegan dish twice; the request said vegan, so it must be
+        // rejected
         MockAIModel ai = MockAIModel.scripted("RECIPES: r13", "RECIPES: r13");
         assertThrows(SmartPlateException.class,
                 () -> agent(ai).recommend("1 vegan dinner", TestData.noRestrictions(), new Pantry()));
-        for (Recipe r : agent(new MockAIModel()).recommend("2 vegan dinners", TestData.noRestrictions(), new Pantry())) {
+        for (Recipe r : agent(new MockAIModel()).recommend("2 vegan dinners", TestData.noRestrictions(),
+                new Pantry())) {
             assertTrue(r.hasTag("vegan"), r.getName());
         }
     }
@@ -166,8 +168,8 @@ class MealPlanningAgentTest {
 
     private MealPlan fiveDayPlan() {
         MealPlan plan = new MealPlan();
-        String[] ids = {"r09", "r01", "r02", "r11", "r17"};
-        String[] days = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday"};
+        String[] ids = { "r09", "r01", "r02", "r11", "r17" };
+        String[] days = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday" };
         for (int i = 0; i < 5; i++) {
             plan.addMeal(new PlannedMeal(days[i], repo.findById(ids[i]), 2));
         }
@@ -206,6 +208,15 @@ class MealPlanningAgentTest {
         MealPlan plan = fiveDayPlan();
         Command command = agent(MockAIModel.scripted("DAY: Wednesday\nRECIPE: r03"))
                 .editPlan("replace the curry with pasta", plan, vegetarian, new Pantry());
+        command.execute();
+        assertEquals("r03", plan.getMeal("Wednesday").getRecipe().getId());
+    }
+
+    @Test
+    void editPlanDoesNotMistakeSundriedForSunday() {
+        MealPlan plan = fiveDayPlan(); // Monday - Friday so a wrong "Sunday" should throw an exception
+        Command command = agent(MockAIModel.scripted("DAY: Wednesday\nRECIPE: r03"))
+                .editPlan("replace the sun-dried tomato pasta with something else", plan, vegetarian, new Pantry());
         command.execute();
         assertEquals("r03", plan.getMeal("Wednesday").getRecipe().getId());
     }
