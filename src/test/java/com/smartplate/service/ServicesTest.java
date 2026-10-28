@@ -60,7 +60,8 @@ class ServicesTest {
     @Test
     void substitutionSkipsSubstitutesThatConflictWithProfile() {
         SubstitutionService service = SubstitutionService.withDefaultSubstitutions();
-        // first option for sour cream is greek yogurt (dairy); a dairy-free user gets coconut yogurt
+        // first option for sour cream is greek yogurt (dairy); a dairy-free user gets
+        // coconut yogurt
         UserProfile dairyFree = TestData.profile(List.of("dairy-free"), List.of(), List.of(), 60);
         Substitution s = service.findSubstitute(new Ingredient("sour cream"), dairyFree);
         assertEquals("coconut yogurt", s.getSubstitute().getName());
@@ -107,8 +108,8 @@ class ServicesTest {
     @Test
     void shoppingListConsolidatesAndSubtractsPantry() {
         MealPlan plan = new MealPlan();
-        plan.addMeal(new PlannedMeal("Monday", TestData.pasta(), 2));   // 200 g spaghetti, 2 garlic
-        plan.addMeal(new PlannedMeal("Tuesday", TestData.pasta(), 4));  // 400 g spaghetti, 4 garlic
+        plan.addMeal(new PlannedMeal("Monday", TestData.pasta(), 2)); // 200 g spaghetti, 2 garlic
+        plan.addMeal(new PlannedMeal("Tuesday", TestData.pasta(), 4)); // 400 g spaghetti, 4 garlic
         Pantry pantry = new Pantry();
         pantry.addItem(new PantryItem("spaghetti", 0.5, "kg"));
         pantry.addItem(new PantryItem("garlic", 10, "pcs"));
@@ -121,6 +122,21 @@ class ServicesTest {
         assertNull(find(list, "garlic")); // covered by the pantry
         assertEquals(120, find(list, "butter").getQuantity(), 1e-9);
         assertTrue(list.getNotes().stream().anyMatch(n -> n.contains("butter")));
+    }
+
+    @Test
+    void shoppingListRoundsCountedItemsUpToWholeNumbers() {
+        Recipe lemonRice = Recipe.builder("t02", "Lemon Rice").time(15).servings(2)
+                .ingredient("rice", "grain", 150, "g")
+                .ingredient("lemon", "fruit", 3, "pcs")
+                .nutrition(400, 8, 80, 5).build();
+        MealPlan plan = new MealPlan();
+        plan.addMeal(new PlannedMeal("Monday", lemonRice, 1)); // 1 serving: 1.5 lemons, 75 g rice
+
+        ShoppingList list = new ShoppingListService().generate(plan, new Pantry());
+        assertEquals(2, find(list, "lemon").getQuantity(), 1e-9); // 1.5 pcs -> 2 pcs
+        assertEquals(75, find(list, "rice").getQuantity(), 1e-9); // grams are not rounded
+        assertTrue(list.getNotes().stream().anyMatch(n -> n.contains("rounded up")));
     }
 
     @Test
