@@ -144,6 +144,14 @@ class ServicesTest {
         assertThrows(SmartPlateException.class, () -> new ShoppingListService().generate(new MealPlan(), new Pantry()));
     }
 
+    @Test
+    void dislikingMilkStillAllowsPlantBasedMilks() {
+        UserProfile noMilk = TestData.profile(List.of(), List.of(), List.of("milk"), 60);
+        Substitution s = SubstitutionService.withDefaultSubstitutions().findSubstitute(new Ingredient("milk", "dairy"),
+                noMilk);
+        assertEquals("oat milk", s.getSubstitute().getName());
+    }
+
     private static ShoppingItem find(ShoppingList list, String name) {
         for (ShoppingItem item : list.getItems()) {
             if (item.getName().equals(name)) {
