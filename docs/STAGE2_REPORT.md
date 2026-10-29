@@ -50,6 +50,7 @@ Ollama model were run by the team; the Claude path is implemented but was only u
 Anthropic key was available.
 
 **Limitations (honest list).**
+
 * **No persistence:** profile, pantry and plan are kept in memory and lost when the app closes (not
   required by the course; listed as future work).
 * **Plans always start on Monday**; one dinner per day.
@@ -251,8 +252,9 @@ are unchanged in `docs/umlet-diagrams/` for comparison.
 
 ![Class diagram of the implemented system](umlet-diagrams/stage2/class/SmartPlate_Stage2_ClassDiagram.png)
 
-*Class diagram of the implemented system. Blue classes were added during implementation; stereotypes
-show each pattern role.*
+*Class diagram of the implemented system (overview). Blue classes were added during implementation;
+stereotypes show each pattern role. Full size: `docs/umlet-diagrams/stage2/class/SmartPlate_Stage2_ClassDiagram.png`
+(UMLet source: `SmartPlate_Stage2_ClassDiagram.uxf` in the same folder).*
 
 ### 3.1 Facade
 * **Problem.** Two user interfaces need the same ten features, and neither should know the agent,
