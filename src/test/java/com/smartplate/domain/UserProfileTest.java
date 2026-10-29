@@ -46,4 +46,10 @@ class UserProfileTest {
         // a looser request limit does not loosen the profile
         assertEquals(45, p.withRequestConstraints(List.of(), List.of(), 90).getMaxCookingTime());
     }
+
+    @Test
+    void entriesWithAccentedLettersAreAccepted() {
+        UserProfile p = new UserProfile(List.of(), List.of(), List.of("jalapeño", "crème fraîche"), 30, 2);
+        assertTrue(p.validate().isEmpty());
+    }
 }

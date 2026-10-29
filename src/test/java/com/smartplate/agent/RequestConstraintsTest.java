@@ -73,4 +73,9 @@ class RequestConstraintsTest {
         assertFalse(validator.validateRecipe(repo.findById("r12"), effective).isValid()); // Greek salad: red onion
         assertTrue(validator.validateRecipe(repo.findById("r30"), effective).isValid()); // dal: red lentils, onion
     }
+
+    @Test
+    void avoidAcceptsAccentedWords() {
+        assertEquals(List.of("jalapeños"), RequestConstraints.parse("no jalapeños please").getAvoid());
+    }
 }
