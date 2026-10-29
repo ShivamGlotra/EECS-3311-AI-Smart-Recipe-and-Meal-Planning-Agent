@@ -43,7 +43,8 @@ how that report was written.
 | AI provider choice | `ai/AIModelFactory.java`, `app/SmartPlateApp.java` (`chooseModel` and the error handling in `main`) | **Partly** | The team wrote the factory that picks mock / anthropic / ollama from `SMARTPLATE_AI_PROVIDER`, and `SmartPlateApp`'s use of it. At the team's request Claude Code later extended the factory with the `gemini` provider, `.env` loading and the helpers the GUI switcher needs (`PROVIDERS`, `forProvider`, `missingSetting`, `providerOf`) |
 | Gemini adapter, `.env` support, AI model switcher | `ai/GeminiAdapter.java`, `ai/EnvFile.java`, `.env.example`, `.gitignore`, `SmartRecipeFacade.setAIProvider`, `MealPlanningAgent.setAIModel`, `MealPlannerGUI.modelSwitcher` | Yes | Requested by the team; written by Claude Code |
 | Local model adapter | `ai/OllamaAdapter.java` | Yes | Written by Claude Code to the constructor and constants the team's factory expects |
-| Tests | `src/test/**` | Yes | 112 JUnit 5 tests (15 of them for the GUI; 22 for the factory, `.env`, Ollama and Gemini adapters) |
+| Stage 2 defect fixes A1–A6 (shopping-list rounding, "sun-dried", multi-word avoid, dairy dislikes, one model per request, accents, edge tests) | `ShoppingList`, `ShoppingListService`, `Days`, `MealPlanningAgent`, `MockAIModel`, `RequestConstraints`, `DietRules`, `Ingredient`, `UserProfile`, `AssistantPanel`, `MealPlannerGUI` and their tests | **Partly** | Claude Code reproduced each defect, explained the cause and wrote the proposed code, tests and test steps (for A4–A6 also patch files). The team chose which defects to fix, applied the changes on its own `fix/*` branches, ran the tests and the GUI/CLI checks, and committed and merged them (commits `6bfd56c` … `94a8a8a`). |
+| Tests | `src/test/**` | Yes (most); the A1–A6 tests were applied by the team | 129 JUnit 5 tests in 21 classes (16 of them for the GUI; 24 for the AI model factory, `.env`, Ollama and Gemini adapters) |
 | Documentation | `docs/IMPLEMENTATION.md`, `docs/DEVELOPER_GUIDE.md`, this file | Yes | Code explanation, developer guide and this disclosure |
 | Stage 2 report | `docs/STAGE2_REPORT.md` | Drafted by AI | Tools table, collaboration log, traceability and design changes, drafted from the session history; the parts marked _[Team]_ are for the team to complete and confirm |
 
@@ -60,7 +61,7 @@ These checks were run during generation and can be repeated by anyone:
 | Check | How to repeat | Result at time of writing |
 |---|---|---|
 | Compiles | `mvn compile` | Success |
-| Unit tests | `mvn test` | 112 tests, 0 failures, 0 errors |
+| Unit tests | `mvn test` | 129 tests, 0 failures, 0 errors |
 | Runnable jar | `mvn package` then `java -jar target/smartplate-1.0.0.jar --cli` | Starts; commands work |
 | Scripted CLI session covering F01–F10 | See `MealPlannerCLITest` and the session in `docs/IMPLEMENTATION.md` §1 | Expected output |
 | GUI | Launched on a virtual display and driven through every state (empty, error, plan, edit, shopping list, nutrition, recipes, pantry error, preferences error) | Works; screenshots in `docs/screenshots/`. One bug was found by the new GUI tests and fixed (the pantry "Added …" message was cleared by the row selection). |
