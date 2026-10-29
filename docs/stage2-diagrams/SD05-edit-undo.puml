@@ -1,0 +1,60 @@
+@startuml SmartPlate_Stage2_SD05_EditUndo
+' SD05 (updated in Stage 2) - Edit Meal Plan and Undo (F06 / UC06)
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam sequenceMessageAlign center
+title SD05 (updated in Stage 2) - Edit Meal Plan and Undo (F06 / UC06)
+
+actor User
+participant "MealPlannerGUI /\nMealPlannerCLI" as UI
+participant SmartRecipeFacade as F
+participant MealPlanningAgent as A
+participant "Days" as D #E3F2FD
+participant AIModel as M
+participant ConstraintValidator as V
+participant ReplaceMealCommand as C
+participant CommandHistory as H
+participant MealPlan as P
+
+== Edit meal ==
+User -> UI : request meal change ("swap Tuesday for ...")
+UI -> F : editMealPlan(request)
+F -> A : editPlan(request, plan, profile, pantry)
+A -> D : findIn(request)
+D --> A : day named in the request, or none ("sun-dried" is not Sunday)
+A -> M : generate(prompt with CURRENT_PLAN, TARGET_DAY if known, CANDIDATES)
+M --> A : "DAY: ...", "RECIPE: id"
+note right of A : day = the request's day, else the AI's choice.\nOne AI answer, no revision (as in Stage 1).
+alt day not in plan, unknown or same recipe
+  A --> F : error
+  F --> UI : display message
+else replacement proposed
+  A -> V : validateRecipe(recipe, effective profile)
+  alt replacement violates constraints
+    V --> A : violations
+    A --> F : error
+    F --> UI : display message
+  else valid replacement
+    A -> C : create(plan, day, oldMeal, newMeal)
+    A --> F : Command
+    F -> H : execute(command)
+    H -> C : execute()
+    C -> P : replaceMeal(day, newMeal)
+    F --> UI : display updated plan (changed day marked)
+  end
+end
+
+== Undo ==
+User -> UI : select Undo
+UI -> F : undoLastChange()
+F -> H : canUndo()
+alt nothing to undo
+  H --> F : false
+  F --> UI : display message
+else can undo
+  F -> H : undo()
+  H -> C : undo()
+  C -> P : replaceMeal(day, oldMeal)
+  F --> UI : display restored plan
+end
+@enduml

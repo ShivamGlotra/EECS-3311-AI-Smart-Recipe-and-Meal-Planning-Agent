@@ -1,0 +1,43 @@
+@startuml SmartPlate_Stage2_SD07_SelectAIModel
+' SD07 (new in Stage 2) - Select AI Model (F11 / UC11)
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam sequenceMessageAlign center
+title SD07 (new in Stage 2) - Select AI Model (F11 / UC11)
+
+actor User
+participant SmartPlateApp as APP
+participant MealPlannerGUI as UI
+participant SmartRecipeFacade as F
+participant EnvFile as E
+participant AIModelFactory as FA
+participant "GeminiAdapter /\nOllamaAdapter /\nAIAdapter / MockAIModel" as AD
+participant MealPlanningAgent as A
+
+== At start-up ==
+APP -> FA : fromEnvironment()
+FA -> E : load()
+E --> FA : environment + .env settings
+FA --> APP : AIModel for SMARTPLATE_AI_PROVIDER (auto: Claude key, else Gemini key, else Mock)
+APP -> F : create(model)
+APP -> UI : start()
+
+== Switching in the window ==
+User -> UI : choose provider in the "AI model" box
+note over UI : the box is disabled while an AI request is running
+UI -> F : setAIProvider(provider)
+F -> E : load()
+E --> F : current settings (re-read, so a key added to .env works)
+F -> FA : missingSetting(provider, settings)
+alt API key missing (e.g. no GEMINI_API_KEY)
+  FA --> F : "Gemini needs an API key: add GEMINI_API_KEY to the .env file."
+  F --> UI : SmartPlateException
+  UI --> User : previous model selected again, box outlined in red, message shown
+else settings complete
+  F -> FA : forProvider(provider, settings)
+  FA -> AD : new adapter (key, model name, URL)
+  FA --> F : AIModel
+  F -> A : setAIModel(model)
+  UI --> User : box shows the model in use, e.g. "Ollama (gemma4:e4b)"
+end
+@enduml
