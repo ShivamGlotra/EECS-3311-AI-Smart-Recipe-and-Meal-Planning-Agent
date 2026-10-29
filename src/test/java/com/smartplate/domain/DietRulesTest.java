@@ -67,4 +67,10 @@ class DietRulesTest {
         UserProfile milkAllergy = TestData.profile(List.of(), List.of("milk"), List.of(), 60);
         assertFalse(DietRules.conflicts(new Ingredient("coconut milk", "other"), milkAllergy).isEmpty());
     }
+
+    @Test
+    void accentedAndPlainSpellingsMatchEachOther() {
+        assertTrue(DietRules.matches(new Ingredient("jalapeno", "vegetable"), "jalapeños"));
+        assertTrue(DietRules.matches(new Ingredient("jalapeño", "vegetable"), "jalapeno"));
+    }
 }

@@ -27,7 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Headless tests of the redesigned Swing panels. AI requests run in place (TaskRunner.direct())
+ * Headless tests of the redesigned Swing panels. AI requests run in place
+ * (TaskRunner.direct())
  * with the offline Mock AI, so every check is deterministic.
  */
 class GuiPanelsTest {
@@ -47,7 +48,8 @@ class GuiPanelsTest {
         }
     }
 
-    // ------------------------------------------------------------------ AI Assistant (F04–F06, F09, F10)
+    // ------------------------------------------------------------------ AI
+    // Assistant (F04–F06, F09, F10)
 
     @Test
     void assistantStartsWithTheEmptyStateAndDisabledPlanActions() {
@@ -127,7 +129,8 @@ class GuiPanelsTest {
         assertEquals(AssistantPanel.SIDE_NUTRITION, panel.sideView());
     }
 
-    // ------------------------------------------------------------------ Recipes (F03, F07–F09)
+    // ------------------------------------------------------------------ Recipes
+    // (F03, F07–F09)
 
     @Test
     void recipesSearchScaleSubstituteAndReset() {
@@ -175,7 +178,8 @@ class GuiPanelsTest {
         assertTrue(panel.status().getMessage().contains("No substitute"));
     }
 
-    // ------------------------------------------------------------------ Pantry (F02)
+    // ------------------------------------------------------------------ Pantry
+    // (F02)
 
     @Test
     void pantryErrorsGoNextToTheRightField() {
@@ -208,7 +212,8 @@ class GuiPanelsTest {
         assertNotNull(facade.getPantry().findItem("chickpeas"));
     }
 
-    // ------------------------------------------------------------------ Preferences (F01)
+    // ------------------------------------------------------------------
+    // Preferences (F01)
 
     @Test
     void invalidProfileIsReportedAndThePreviousProfileStays() {
@@ -254,7 +259,8 @@ class GuiPanelsTest {
 
     @Test
     void theAiModelSwitcherChangesModelOrExplainsWhyNot() {
-        SmartRecipeFacade switchable = SmartRecipeFacade.create(new MockAIModel(), () -> Map.of("OLLAMA_MODEL", "gemma4:e4b"));
+        SmartRecipeFacade switchable = SmartRecipeFacade.create(new MockAIModel(),
+                () -> Map.of("OLLAMA_MODEL", "gemma4:e4b"));
         JComponent content = new MealPlannerGUI(switchable).buildContent();
         JTabbedPane tabs = find(content, JTabbedPane.class);
         JComboBox<?> model = findNamed((Component) tabs.getClientProperty(

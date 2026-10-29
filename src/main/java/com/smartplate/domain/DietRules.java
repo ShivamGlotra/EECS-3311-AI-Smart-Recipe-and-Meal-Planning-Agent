@@ -1,5 +1,6 @@
 package com.smartplate.domain;
 
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -40,6 +41,14 @@ public final class DietRules {
             "seafood", "seafood");
 
     private DietRules() {
+    }
+
+    /**
+     * "jalapeño" -> "jalapeno", "crème" -> "creme", so accented and plain spellings
+     * match.
+     */
+    static String withoutAccents(String text) {
+        return Normalizer.normalize(text, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
     }
 
     /**
@@ -128,7 +137,7 @@ public final class DietRules {
      * "berries" -> "berry".
      */
     public static String singular(String term) {
-        String t = term == null ? "" : term.trim().toLowerCase(Locale.ROOT);
+        String t = withoutAccents(term == null ? "" : term.trim().toLowerCase(Locale.ROOT));
         if (t.endsWith("ies") && t.length() > 4) {
             return t.substring(0, t.length() - 3) + "y";
         }

@@ -120,7 +120,7 @@ public final class RequestConstraints {
                 addAvoidItem(items, words);
                 continue;
             }
-            if (word.isEmpty() || AVOID_STOP.contains(word) || !word.matches("[a-z][a-z'-]*")) {
+            if (word.isEmpty() || AVOID_STOP.contains(word) || !word.matches("\\p{L}[\\p{L}'-]*")) {
                 break;
             }
             if (words.isEmpty() && ARTICLES.contains(word)) {
