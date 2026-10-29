@@ -29,16 +29,22 @@ import java.util.regex.Pattern;
 /**
  * The AI agent behind F04 (recommend), F05 (weekly plan) and F06 (edit plan).
  *
- * <p>Every hybrid feature follows the same loop (report section 1.4):
+ * <p>
+ * Every hybrid feature follows the same loop (report section 1.4):
  * <ol>
- *   <li>retrieve recipes from RecipeRepository;</li>
- *   <li>the RecipeSelectionStrategy shortlists candidates (Strategy pattern, this class is the Context);</li>
- *   <li>the AIModel chooses among the candidates (Adapter pattern, this class is the Client);</li>
- *   <li>ConstraintValidator checks the choice with deterministic code;</li>
- *   <li>if there are violations, ask the AI once more with the violation messages;</li>
- *   <li>return a valid result, or report the failure. An invalid result is never returned.</li>
+ * <li>retrieve recipes from RecipeRepository;</li>
+ * <li>the RecipeSelectionStrategy shortlists candidates (Strategy pattern, this
+ * class is the Context);</li>
+ * <li>the AIModel chooses among the candidates (Adapter pattern, this class is
+ * the Client);</li>
+ * <li>ConstraintValidator checks the choice with deterministic code;</li>
+ * <li>if there are violations, ask the AI once more with the violation
+ * messages;</li>
+ * <li>return a valid result, or report the failure. An invalid result is never
+ * returned.</li>
  * </ol>
- * Each step is written to a trace that the CLI and GUI can show ("agent trace").
+ * Each step is written to a trace that the CLI and GUI can show ("agent
+ * trace").
  */
 public class MealPlanningAgent {
 
@@ -57,7 +63,7 @@ public class MealPlanningAgent {
     private final List<String> trace = new ArrayList<>();
 
     public MealPlanningAgent(AIModel aiModel, RecipeRepository repository, ConstraintValidator validator,
-                             RecipeSelectionStrategy strategy) {
+            RecipeSelectionStrategy strategy) {
         this.aiModel = aiModel;
         this.repository = repository;
         this.validator = validator;
@@ -90,7 +96,8 @@ public class MealPlanningAgent {
         return Collections.unmodifiableList(trace);
     }
 
-    // ================================================================== F04 recommend
+    // ================================================================== F04
+    // recommend
 
     public List<Recipe> recommend(String request, UserProfile profile, Pantry pantry) {
         trace.clear();
@@ -149,7 +156,8 @@ public class MealPlanningAgent {
         return valid;
     }
 
-    // ================================================================== F05 create plan
+    // ================================================================== F05 create
+    // plan
 
     public MealPlan createPlan(String request, UserProfile profile, Pantry pantry) {
         trace.clear();
@@ -208,9 +216,13 @@ public class MealPlanningAgent {
         throw new SmartPlateException("Could not build a valid meal plan. Problems: " + String.join("; ", violations));
     }
 
-    // ================================================================== F06 edit plan
+    // ================================================================== F06 edit
+    // plan
 
-    /** Chooses a replacement meal and returns (but does not run) the command that applies it. */
+    /**
+     * Chooses a replacement meal and returns (but does not run) the command that
+     * applies it.
+     */
     public Command editPlan(String request, MealPlan plan, UserProfile profile, Pantry pantry) {
         trace.clear();
         if (plan == null || plan.isEmpty()) {
@@ -305,7 +317,10 @@ public class MealPlanningAgent {
         }
     }
 
-    /** Finds the recipe for an id, recording a violation if the AI named an unknown recipe. */
+    /**
+     * Finds the recipe for an id, recording a violation if the AI named an unknown
+     * recipe.
+     */
     private Recipe lookup(String id, List<String> violations, Set<String> exclude) {
         Recipe recipe = repository.findById(id);
         if (recipe == null) {
@@ -316,7 +331,7 @@ public class MealPlanningAgent {
     }
 
     private PromptBuilder newPrompt(String task, String request, UserProfile profile, List<Recipe> candidates,
-                                    Set<String> exclude, List<String> violations) {
+            Set<String> exclude, List<String> violations) {
         Set<String> avoid = new LinkedHashSet<>(profile.getAllergies());
         avoid.addAll(profile.getDislikedIngredients());
         PromptBuilder b = new PromptBuilder()
@@ -373,13 +388,7 @@ public class MealPlanningAgent {
     }
 
     private static String findDay(String request) {
-        for (String word : request.split("[^A-Za-z']+")) {
-            String day = Days.normalize(word);
-            if (day != null && word.length() >= 3) {
-                return day;
-            }
-        }
-        return null;
+        return Days.findIn(request);
     }
 
     private static String joinOrNone(Set<String> values) {
