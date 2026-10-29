@@ -101,6 +101,8 @@ public class MealPlanningAgent {
 
     public List<Recipe> recommend(String request, UserProfile profile, Pantry pantry) {
         trace.clear();
+        AIModel model = aiModel; // avoid race conditions if the GUI switches the model during a request - only
+                                 // the first model or one model per request is used for the whole request
         RequestConstraints constraints = RequestConstraints.parse(request);
         UserProfile effective = constraints.applyTo(profile);
         log("Request: \"" + request + "\" (constraints from request: " + constraints + ")");
@@ -116,7 +118,7 @@ public class MealPlanningAgent {
                     .field(PromptFormat.RESPONSE_FORMAT, PromptFormat.RECIPES + ": <id>, <id>, ... (exactly "
                             + count + " different ids)")
                     .build();
-            String answer = callAI(prompt, attempt);
+            String answer = callAI(model, prompt, attempt);
 
             valid = new ArrayList<>();
             violations = new ArrayList<>();
@@ -161,6 +163,7 @@ public class MealPlanningAgent {
 
     public MealPlan createPlan(String request, UserProfile profile, Pantry pantry) {
         trace.clear();
+        AIModel model = aiModel;
         RequestConstraints constraints = RequestConstraints.parse(request);
         UserProfile effective = constraints.applyTo(profile);
         int dayCount = constraints.planDays();
@@ -178,7 +181,7 @@ public class MealPlanningAgent {
                     .field(PromptFormat.RESPONSE_FORMAT, "one line per day, '<Day>: <id>', for exactly these days: "
                             + String.join(", ", days) + ". Prefer a different recipe each day.")
                     .build();
-            String answer = callAI(prompt, attempt);
+            String answer = callAI(model, prompt, attempt);
 
             violations = new ArrayList<>();
             Map<String, String> chosen = parsePlan(answer);
@@ -225,6 +228,7 @@ public class MealPlanningAgent {
      */
     public Command editPlan(String request, MealPlan plan, UserProfile profile, Pantry pantry) {
         trace.clear();
+        AIModel model = aiModel;
         if (plan == null || plan.isEmpty()) {
             throw new SmartPlateException("There is no meal plan to edit. Create a plan first.");
         }
@@ -258,7 +262,7 @@ public class MealPlanningAgent {
         }
         builder.field(PromptFormat.RESPONSE_FORMAT, "two lines: '" + PromptFormat.DAY + ": <day to change>' and '"
                 + PromptFormat.RECIPE + ": <replacement id>'. Choose a recipe that is not already in the plan.");
-        String answer = callAI(builder.build(), 1);
+        String answer = callAI(model, builder.build(), 1);
 
         String day = targetDay != null ? targetDay : Days.normalize(PromptFormat.field(answer, PromptFormat.DAY));
         PlannedMeal oldMeal = day == null ? null : plan.getMeal(day);
@@ -305,10 +309,10 @@ public class MealPlanningAgent {
         return candidates;
     }
 
-    private String callAI(String prompt, int attempt) {
-        log("Asking " + aiModel.getName() + (attempt > 1 ? " (revision)" : "") + ".");
+    private String callAI(AIModel model, String prompt, int attempt) {
+        log("Asking " + model.getName() + (attempt > 1 ? " (revision)" : "") + ".");
         try {
-            String answer = aiModel.generate(prompt);
+            String answer = model.generate(prompt);
             log("AI answered: " + answer.replace('\n', ' '));
             return answer;
         } catch (RuntimeException e) {

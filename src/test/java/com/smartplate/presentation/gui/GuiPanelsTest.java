@@ -17,8 +17,11 @@ import javax.swing.JComponent;
 import javax.swing.JTabbedPane;
 import java.awt.Component;
 import java.awt.Container;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -131,6 +134,27 @@ class GuiPanelsTest {
 
     // ------------------------------------------------------------------ Recipes
     // (F03, F07–F09)
+
+    @Test
+    void theWindowIsToldWhenAnAIRequestStartsAndEnds() {
+        List<Runnable> pending = new ArrayList<>();
+        TaskRunner later = new TaskRunner() {
+            @Override
+            public <T> void run(Callable<T> task, Consumer<T> onSuccess, Consumer<RuntimeException> onFailure) {
+                pending.add(() -> TaskRunner.direct().run(task, onSuccess, onFailure));
+            }
+        };
+
+        AssistantPanel panel = new AssistantPanel(facade, later);
+        List<Boolean> busyStates = new ArrayList<>();
+        panel.onBusyChange(busyStates::add);
+
+        panel.requestField().setText("Weekly dinners");
+        panel.createPlan();
+        assertEquals(List.of(true), busyStates); // request running but windows locks the two combo boxes
+        pending.get(0).run(); // run the AI answers
+        assertEquals(List.of(true, false), busyStates); // request done, window unlocks the combo boxes
+    }
 
     @Test
     void recipesSearchScaleSubstituteAndReset() {

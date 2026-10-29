@@ -1,6 +1,7 @@
 package com.smartplate.agent;
 
 import com.smartplate.TestData;
+import com.smartplate.ai.AIModel;
 import com.smartplate.ai.AIServiceException;
 import com.smartplate.ai.MockAIModel;
 import com.smartplate.command.Command;
@@ -44,6 +45,31 @@ class MealPlanningAgentTest {
             assertTrue(v.validateRecipe(r, vegetarian).isValid(), r.getName());
         }
         assertEquals(1, ai.getPrompts().size()); // no revision needed
+    }
+
+    @Test
+    void aRequestKeepsTheAIModelItStartedWithIfTheUserSwitchesMidway() {
+        MockAIModel second = MockAIModel.scripted("RECIPES: r11, r17");
+        MockAIModel answers = MockAIModel.scripted("RECIPES: r04, r999", "RECIPES: r09, r02");
+        MealPlanningAgent[] agent = new MealPlanningAgent[1];
+        AIModel first = new AIModel() {
+            @Override
+            public String generate(String prompt) {
+                agent[0].setAIModel(second); // the user picks another model while the request runs
+                return answers.generate(prompt);
+            }
+
+            @Override
+            public String getName() {
+                return "first model";
+            }
+        };
+        agent[0] = new MealPlanningAgent(first, repo, new ConstraintValidator(), new PantryFirstStrategy());
+
+        List<Recipe> recs = agent[0].recommend("2 dinners", vegetarian, new Pantry());
+        assertEquals(List.of(repo.findById("r09"), repo.findById("r02")), recs); // revision came from the first model
+        assertTrue(second.getPrompts().isEmpty());
+        assertEquals(second, agent[0].getAIModel()); // the switch applies to the next request
     }
 
     @Test
