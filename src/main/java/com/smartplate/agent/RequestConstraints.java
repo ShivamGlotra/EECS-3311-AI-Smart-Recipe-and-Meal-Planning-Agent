@@ -16,8 +16,11 @@ import java.util.regex.Pattern;
  * Hard constraints stated inside one natural-language request, for example
  * "plan 5 vegetarian dinners, avoid mushrooms, under 30 minutes, for 4 people".
  *
- * <p>The AI model also reads the request, but these few constraints are extracted with plain
- * rules so that ConstraintValidator can enforce them deterministically for this request only
+ * <p>
+ * The AI model also reads the request, but these few constraints are extracted
+ * with plain
+ * rules so that ConstraintValidator can enforce them deterministically for this
+ * request only
  * (the stored profile is not changed).
  */
 public final class RequestConstraints {
@@ -27,8 +30,14 @@ public final class RequestConstraints {
             "\\b(\\d+)\\s+(?:[a-z-]+\\s+)?(?:recipes?|ideas?|options?|suggestions?|dishes|dinners?|meals?)\\b");
     private static final Pattern TIME = Pattern.compile(
             "\\b(?:under|below|less than|within|max(?:imum)?|at most|no more than|in)\\s+(\\d+)\\s*(?:min|mins|minutes)\\b");
-    private static final Pattern SERVINGS = Pattern.compile("\\bfor\\s+(\\d+)\\s*(?:people|persons|servings|guests)\\b");
-    private static final Pattern AVOID = Pattern.compile("\\b(?:avoid|avoiding|no|without|skip)\\s+([a-z][a-z-]*)");
+    private static final Pattern SERVINGS = Pattern
+            .compile("\\bfor\\s+(\\d+)\\s*(?:people|persons|servings|guests)\\b");
+    private static final Pattern AVOID = Pattern.compile("\\b(?:avoid|avoiding|no|without|skip)\\b");
+    private static final Set<String> AVOID_STOP = Set.of(
+            "under", "below", "less", "within", "in", "for", "with", "please", "because", "but",
+            "keep", "make", "use", "using", "than", "this", "that", "today", "tonight");
+    private static final Set<String> ARTICLES = Set.of("the", "a", "an", "any");
+    private static final int MAX_AVOID_WORDS = 3;
     private static final Set<String> NOT_INGREDIENTS = Set.of(
             "more", "longer", "than", "repeats", "repeat", "repeated", "cooking", "oven", "time", "fuss",
             "need", "thanks", "the", "a", "an", "any", "spicy", "leftovers");
@@ -41,7 +50,7 @@ public final class RequestConstraints {
     private final List<String> diets;
 
     private RequestConstraints(Integer days, Integer count, Integer maxTime, Integer servings, List<String> avoid,
-                               List<String> diets) {
+            List<String> diets) {
         this.days = days;
         this.count = count;
         this.maxTime = maxTime;
@@ -78,9 +87,10 @@ public final class RequestConstraints {
         List<String> avoid = new ArrayList<>();
         m = AVOID.matcher(text);
         while (m.find()) {
-            String word = m.group(1);
-            if (!NOT_INGREDIENTS.contains(word) && !avoid.contains(word)) {
-                avoid.add(word);
+            for (String item : avoidedItems(text.substring(m.end()))) {
+                if (!avoid.contains(item)) {
+                    avoid.add(item);
+                }
             }
         }
         List<String> diets = new ArrayList<>();
@@ -90,6 +100,45 @@ public final class RequestConstraints {
             }
         }
         return new RequestConstraints(days, count, maxTime, servings, avoid, diets);
+    }
+
+    /**
+     * Reads what follows "avoid" / "no" / "without" / "skip" up to the end of that
+     * part of the
+     * request: "red onion, under 30 min" gives [red onion], "mushrooms and olives"
+     * gives
+     * [mushrooms, olives], "the mushrooms" gives [mushrooms]. An item that starts
+     * with a
+     * non-ingredient word ("more than 20 min") is dropped.
+     */
+    private static List<String> avoidedItems(String rest) {
+        List<String> items = new ArrayList<>();
+        List<String> words = new ArrayList<>();
+        String clause = rest.split("[,.;:!?()]", 2)[0];
+        for (String word : clause.trim().split("\\s+")) {
+            if (word.equals("and") || word.equals("or") || word.equals("nor")) {
+                addAvoidItem(items, words);
+                continue;
+            }
+            if (word.isEmpty() || AVOID_STOP.contains(word) || !word.matches("[a-z][a-z'-]*")) {
+                break;
+            }
+            if (words.isEmpty() && ARTICLES.contains(word)) {
+                continue;
+            }
+            if (words.size() < MAX_AVOID_WORDS) {
+                words.add(word);
+            }
+        }
+        addAvoidItem(items, words);
+        return items;
+    }
+
+    private static void addAvoidItem(List<String> items, List<String> words) {
+        if (!words.isEmpty() && !NOT_INGREDIENTS.contains(words.get(0))) {
+            items.add(String.join(" ", words));
+        }
+        words.clear();
     }
 
     /** Number of plan days: the request's number, or 7. Must be 5 to 7. */
