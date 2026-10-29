@@ -400,7 +400,7 @@ mvn test
 
 The implementation follows the class diagram. The helper classes below were added; none of them
 changes a pattern or a sequence diagram. The complete list of design changes, each with its reason,
-and the feature-by-feature traceability table are in [`STAGE2_REPORT.md` §5–§6](STAGE2_REPORT.md#5-design-to-implementation-traceability-11).
+and the feature-by-feature traceability table are in [`STAGE2_REPORT.md` §2 and §4](STAGE2_REPORT.md#2-feature-to-implementation-mapping).
 
 | Addition / difference | Why |
 |---|---|
