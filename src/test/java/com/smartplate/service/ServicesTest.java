@@ -152,6 +152,14 @@ class ServicesTest {
         assertEquals("oat milk", s.getSubstitute().getName());
     }
 
+    @Test
+    void scalingDownToOneServingHalvesATwoServingRecipe() {
+        Recipe one = new ServingScaler().scale(TestData.pasta(), 1); // pasta is written for 2
+        assertEquals(1, one.getServings());
+        assertEquals(100, one.findIngredient("spaghetti").getQuantity(), 1e-9);
+        assertEquals(1, one.findIngredient("garlic").getQuantity(), 1e-9);
+    }
+
     private static ShoppingItem find(ShoppingList list, String name) {
         for (ShoppingItem item : list.getItems()) {
             if (item.getName().equals(name)) {

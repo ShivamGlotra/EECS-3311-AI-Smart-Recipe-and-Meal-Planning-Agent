@@ -78,4 +78,12 @@ class RequestConstraintsTest {
     void avoidAcceptsAccentedWords() {
         assertEquals(List.of("jalapeños"), RequestConstraints.parse("no jalapeños please").getAvoid());
     }
+
+    @Test
+    void planLengthLimitsAreExactlyFiveAndSevenDays() {
+        assertEquals(5, RequestConstraints.parse("plan 5 dinners").planDays());
+        assertEquals(7, RequestConstraints.parse("plan 7 days").planDays());
+        assertThrows(SmartPlateException.class, () -> RequestConstraints.parse("plan 4 dinners").planDays());
+        assertThrows(SmartPlateException.class, () -> RequestConstraints.parse("plan 8 dinners").planDays());
+    }
 }
