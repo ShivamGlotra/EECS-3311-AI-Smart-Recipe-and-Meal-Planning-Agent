@@ -1,0 +1,1 @@
+{"request": {"action": "plan", "request": "Plan 9 dinners"}, "reply": {"ok": false, "action": "plan", "error": "A plan must have 5 to 7 days (one dinner per day); the request asked for 9.", "model": "Mock AI (offline)", "elapsedMs": 9, "trace": [], "wallMs": 272}}
