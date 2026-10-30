@@ -14,7 +14,7 @@ different uses of AI apart:
 | Item | Detail |
 |---|---|
 | Tool | **Claude Code**, Anthropic's AI coding assistant, used through claude.ai/code |
-| LLM model | _[Team]_ as shown in Claude Code's session details; recorded in [`STAGE2_REPORT.md` §3](STAGE2_REPORT.md#3-ai-tools-and-models-9) |
+| LLM model | _[Team]_ as shown in Claude Code's session details; recorded in [`STAGE2_REPORT.md` §5](STAGE2_REPORT.md#5-ai-tools-and-collaboration-log) |
 | Used for | Generating the Java implementation, the unit tests, the sample data and the documentation in this branch |
 | Input given to the tool | The team's **Stage 1 design report and UML diagrams** (branch `stage-1Fix`: `README.md`, `docs/uml-diagrams/**`, since moved to `docs/plantuml-diagrams/`; the final UMLet versions are in `docs/umlet-diagrams/`), plus the instruction to implement every feature as described in the report, explain the code, and document the AI assistance |
 | Where its output lives | The Stage 2 commits on the `claude/nifty-albattani-1lnuay` and `claude/swing-ui-direction-b` branches: `pom.xml`, `src/**`, `.env.example`, `docs/IMPLEMENTATION.md`, `docs/DEVELOPER_GUIDE.md`, `docs/STAGE2_REPORT.md` (draft), `docs/AI_USAGE.md`, `docs/screenshots/**`, and the setup and documents sections of `README.md`. Exceptions written by the team are listed in §2. |
@@ -43,7 +43,8 @@ how that report was written.
 | AI provider choice | `ai/AIModelFactory.java`, `app/SmartPlateApp.java` (`chooseModel` and the error handling in `main`) | **Partly** | The team wrote the factory that picks mock / anthropic / ollama from `SMARTPLATE_AI_PROVIDER`, and `SmartPlateApp`'s use of it. At the team's request Claude Code later extended the factory with the `gemini` provider, `.env` loading and the helpers the GUI switcher needs (`PROVIDERS`, `forProvider`, `missingSetting`, `providerOf`) |
 | Gemini adapter, `.env` support, AI model switcher | `ai/GeminiAdapter.java`, `ai/EnvFile.java`, `.env.example`, `.gitignore`, `SmartRecipeFacade.setAIProvider`, `MealPlanningAgent.setAIModel`, `MealPlannerGUI.modelSwitcher` | Yes | Requested by the team; written by Claude Code |
 | Local model adapter | `ai/OllamaAdapter.java` | Yes | Written by Claude Code to the constructor and constants the team's factory expects |
-| Tests | `src/test/**` | Yes | 112 JUnit 5 tests (15 of them for the GUI; 22 for the factory, `.env`, Ollama and Gemini adapters) |
+| Stage 2 defect fixes A1–A6 (shopping-list rounding, "sun-dried", multi-word avoid, dairy dislikes, one model per request, accents, edge tests) | `ShoppingList`, `ShoppingListService`, `Days`, `MealPlanningAgent`, `MockAIModel`, `RequestConstraints`, `DietRules`, `Ingredient`, `UserProfile`, `AssistantPanel`, `MealPlannerGUI` and their tests | **Partly** | Claude Code reproduced each defect, explained the cause and wrote the proposed code, tests and test steps (for A4–A6 also patch files). The team chose which defects to fix, applied the changes on its own `fix/*` branches, ran the tests and the GUI/CLI checks, and committed and merged them (commits `6bfd56c` … `94a8a8a`). |
+| Tests | `src/test/**` | Yes (most); the A1–A6 tests were applied by the team | 129 JUnit 5 tests in 21 classes (16 of them for the GUI; 24 for the AI model factory, `.env`, Ollama and Gemini adapters) |
 | Documentation | `docs/IMPLEMENTATION.md`, `docs/DEVELOPER_GUIDE.md`, this file | Yes | Code explanation, developer guide and this disclosure |
 | Stage 2 report | `docs/STAGE2_REPORT.md` | Drafted by AI | Tools table, collaboration log, traceability and design changes, drafted from the session history; the parts marked _[Team]_ are for the team to complete and confirm |
 
@@ -60,7 +61,7 @@ These checks were run during generation and can be repeated by anyone:
 | Check | How to repeat | Result at time of writing |
 |---|---|---|
 | Compiles | `mvn compile` | Success |
-| Unit tests | `mvn test` | 112 tests, 0 failures, 0 errors |
+| Unit tests | `mvn test` | 129 tests, 0 failures, 0 errors |
 | Runnable jar | `mvn package` then `java -jar target/smartplate-1.0.0.jar --cli` | Starts; commands work |
 | Scripted CLI session covering F01–F10 | See `MealPlannerCLITest` and the session in `docs/IMPLEMENTATION.md` §1 | Expected output |
 | GUI | Launched on a virtual display and driven through every state (empty, error, plan, edit, shopping list, nutrition, recipes, pantry error, preferences error) | Works; screenshots in `docs/screenshots/`. One bug was found by the new GUI tests and fixed (the pantry "Added …" message was cleared by the row selection). |
