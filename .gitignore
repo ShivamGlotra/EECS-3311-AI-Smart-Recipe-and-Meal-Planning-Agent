@@ -14,3 +14,8 @@ target/
 # IntelliJ (run configurations can hold environment variables such as API keys)
 .idea/
 *.iml
+
+# KUMA (Stage 3 agent tests): local runtime folder and Python caches
+.kuma/
+__pycache__/
+.venv/
