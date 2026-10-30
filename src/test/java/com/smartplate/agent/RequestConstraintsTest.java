@@ -86,4 +86,24 @@ class RequestConstraintsTest {
         assertThrows(SmartPlateException.class, () -> RequestConstraints.parse("plan 4 dinners").planDays());
         assertThrows(SmartPlateException.class, () -> RequestConstraints.parse("plan 8 dinners").planDays());
     }
+
+    @Test
+    void decimalDaysRoundToTheNearestDayWithHalvesTowardFiveToSeven() {
+        assertEquals(5, RequestConstraints.parse("plan 4.5 dinners").planDays());
+        assertEquals(6, RequestConstraints.parse("plan 5.5 days").planDays());
+        assertEquals(7, RequestConstraints.parse("plan 7.5 days").planDays());
+        assertEquals(7, RequestConstraints.parse("plan 7.4 days").planDays());
+        SmartPlateException e = assertThrows(SmartPlateException.class,
+                () -> RequestConstraints.parse("give me dinner for 9.5 days").planDays());
+        assertTrue(e.getMessage().contains("asked for 9.5"), e.getMessage()); // not quietly 5 days
+    }
+
+    @Test
+    void otherDecimalNumbersAreRoundedAndHugeNumbersAreAnError() {
+        RequestConstraints c = RequestConstraints.parse("2.5 quick dinners under 30.5 minutes for 2.5 people");
+        assertEquals(3, c.recommendationCount(1));      // nearest, .5 up
+        assertEquals(30, c.getMaxTime());                 // a time limit rounds down
+        assertEquals(3, c.servings(2));                   // nearest, .5 up
+        assertThrows(SmartPlateException.class, () -> RequestConstraints.parse("plan 99999999999 days"));
+    }
 }

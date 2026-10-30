@@ -25,13 +25,15 @@ import java.util.regex.Pattern;
  */
 public final class RequestConstraints {
 
-    private static final Pattern DAYS = Pattern.compile("\\b(\\d+)\\s*-?\\s*(?:days?|dinners?|nights?)\\b");
+    /** A number in the request, decimals included, so "9.5 days" is never read as "5 days". */
+    private static final String NUMBER = "(?<![\\d.])(\\d+(?:\\.\\d+)?)";
+    private static final Pattern DAYS = Pattern.compile(NUMBER + "\\s*-?\\s*(?:days?|dinners?|nights?)\\b");
     private static final Pattern COUNT = Pattern.compile(
-            "\\b(\\d+)\\s+(?:[a-z-]+\\s+)?(?:recipes?|ideas?|options?|suggestions?|dishes|dinners?|meals?)\\b");
+            NUMBER + "\\s+(?:[a-z-]+\\s+)?(?:recipes?|ideas?|options?|suggestions?|dishes|dinners?|meals?)\\b");
     private static final Pattern TIME = Pattern.compile(
-            "\\b(?:under|below|less than|within|max(?:imum)?|at most|no more than|in)\\s+(\\d+)\\s*(?:min|mins|minutes)\\b");
+            "\\b(?:under|below|less than|within|max(?:imum)?|at most|no more than|in)\\s+" + NUMBER + "\\s*(?:min|mins|minutes)\\b");
     private static final Pattern SERVINGS = Pattern
-            .compile("\\bfor\\s+(\\d+)\\s*(?:people|persons|servings|guests)\\b");
+            .compile("\\bfor\\s+" + NUMBER + "\\s*(?:people|persons|servings|guests)\\b");
     private static final Pattern AVOID = Pattern.compile("\\b(?:avoid|avoiding|no|without|skip)\\b");
     private static final Set<String> AVOID_STOP = Set.of(
             "under", "below", "less", "within", "in", "for", "with", "please", "because", "but",
@@ -42,14 +44,14 @@ public final class RequestConstraints {
             "more", "longer", "than", "repeats", "repeat", "repeated", "cooking", "oven", "time", "fuss",
             "need", "thanks", "the", "a", "an", "any", "spicy", "leftovers");
 
-    private final Integer days;
+    private final Double days; // as written, e.g. 9.5; planDays() rounds it
     private final Integer count;
     private final Integer maxTime;
     private final Integer servings;
     private final List<String> avoid;
     private final List<String> diets;
 
-    private RequestConstraints(Integer days, Integer count, Integer maxTime, Integer servings, List<String> avoid,
+    private RequestConstraints(Double days, Integer count, Integer maxTime, Integer servings, List<String> avoid,
             List<String> diets) {
         this.days = days;
         this.count = count;
@@ -61,28 +63,28 @@ public final class RequestConstraints {
 
     public static RequestConstraints parse(String request) {
         String text = request == null ? "" : request.toLowerCase(Locale.ROOT);
-        Integer days = null;
+        Double days = null;
         if (text.contains("weekday") || text.contains("work week") || text.contains("workweek")) {
-            days = 5;
+            days = 5.0;
         }
         Matcher m = DAYS.matcher(text);
         if (m.find()) {
-            days = Integer.parseInt(m.group(1));
+            days = number(m.group(1), "days");
         }
         Integer count = null;
         m = COUNT.matcher(text);
         if (m.find()) {
-            count = Integer.parseInt(m.group(1));
+            count = (int) Math.round(number(m.group(1), "recipes")); // nearest, .5 up
         }
         Integer maxTime = null;
         m = TIME.matcher(text);
         if (m.find()) {
-            maxTime = Integer.parseInt(m.group(1));
+            maxTime = (int) Math.floor(number(m.group(1), "minutes")); // a limit: round down
         }
         Integer servings = null;
         m = SERVINGS.matcher(text);
         if (m.find()) {
-            servings = Integer.parseInt(m.group(1));
+            servings = (int) Math.round(number(m.group(1), "people")); // nearest, .5 up
         }
         List<String> avoid = new ArrayList<>();
         m = AVOID.matcher(text);
@@ -141,12 +143,39 @@ public final class RequestConstraints {
         words.clear();
     }
 
+    /** A number from the request; a huge one is a clear error instead of an overflow. */
+    private static double number(String text, String what) {
+        double value = Double.parseDouble(text);
+        if (value > Integer.MAX_VALUE) {
+            throw new SmartPlateException("The number of " + what + " (" + text + ") is too large.");
+        }
+        return value;
+    }
+
+    /** Nearest whole number; an exact half goes toward the allowed range (4.5 -> 5, 7.5 -> 7, 5.5 -> 6). */
+    static int roundTowardRange(double value, int min, int max) {
+        double down = Math.floor(value);
+        double up = Math.ceil(value);
+        if (value - down < 0.5) {
+            return (int) down;
+        }
+        if (value - down > 0.5) {
+            return (int) up;
+        }
+        return up <= min ? (int) up : down >= max ? (int) down : (int) up;
+    }
+
+    private static String format(double value) {
+        return value == Math.rint(value) ? String.valueOf((long) value) : String.valueOf(value);
+    }
+
     /** Number of plan days: the request's number, or 7. Must be 5 to 7. */
     public int planDays() {
-        int n = days == null ? MealPlan.MAX_DAYS : days;
+        double asked = days == null ? MealPlan.MAX_DAYS : days;
+        int n = roundTowardRange(asked, MealPlan.MIN_DAYS, MealPlan.MAX_DAYS);
         if (n < MealPlan.MIN_DAYS || n > MealPlan.MAX_DAYS) {
             throw new SmartPlateException("A plan must have " + MealPlan.MIN_DAYS + " to " + MealPlan.MAX_DAYS
-                    + " days (one dinner per day); the request asked for " + n + ".");
+                    + " days (one dinner per day); the request asked for " + format(asked) + ".");
         }
         return n;
     }
@@ -182,7 +211,7 @@ public final class RequestConstraints {
     public String toString() {
         List<String> parts = new ArrayList<>();
         if (days != null) {
-            parts.add(days + " days");
+            parts.add(format(days) + " days");
         }
         if (count != null) {
             parts.add(count + " items");
