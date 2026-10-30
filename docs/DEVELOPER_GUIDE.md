@@ -181,7 +181,7 @@ the facade.
 
 ```bash
 mvn compile                          # compile only (like tsc)
-mvn test                             # run all 129 tests
+mvn test                             # run all 132 tests
 mvn package                          # build target/smartplate-1.0.0.jar (includes all libraries)
 java -jar target/smartplate-1.0.0.jar            # open the desktop app
 java -jar target/smartplate-1.0.0.jar --cli      # command-line version
@@ -300,7 +300,7 @@ src/main/java/com/smartplate/
       Icons.java                      small icons drawn in code
       TaskRunner.java                 runs AI calls in the background (or directly in tests)
 
-src/test/java/com/smartplate/         21 test classes, 129 tests (see section 12)
+src/test/java/com/smartplate/         21 test classes, 132 tests (see section 12)
 ```
 
 ---
@@ -435,8 +435,8 @@ State it owns: `profile`, `pantry`, `currentPlan`, `lastSubstitution`.
 | 2 | Read the text; blank → red error, stop | `AssistantPanel.java:318` `createPlan` → `:391` `requestText` |
 | 3 | Disable buttons, show "Working…", run in background | `:370` `runAI` → `gui/TaskRunner.java:17` |
 | 4 | **Facade** forwards to the agent | `facade/SmartRecipeFacade.java:143` `createMealPlan` |
-| 5 | Read constraints from the text ("5 dinners", "avoid mushrooms"…) | `agent/RequestConstraints.java:62` `parse` |
-| 6 | Number of days must be 5–7 or error | `RequestConstraints.java:145` `planDays` |
+| 5 | Read constraints from the text ("5 dinners", "avoid mushrooms"…) | `agent/RequestConstraints.java:64` `parse` |
+| 6 | Number of days must be 5–7 or error | `RequestConstraints.java:173` `planDays` |
 | 7 | Get all 30 recipes, strategy filters + sorts, keep 15 | `agent/MealPlanningAgent.java:298` `shortlist` |
 | 8 | Build the prompt (profile, candidates, response format) | `MealPlanningAgent.java:337` `newPrompt` |
 | 9 | Ask the AI | `MealPlanningAgent.java:312` `callAI` → `MockAIModel.generate` (:76) or `AIAdapter.generate` (:42) |
@@ -475,8 +475,8 @@ The panel also computes "Covered by your pantry" (plan ingredients you have that
 
 ### 8.4 CLI: typing `plan weekday dinners`
 
-`app/SmartPlateApp.java:35` `main` → `MealPlannerCLI.runLoop` (:72) reads a line →
-`handle` (:108) → `case "plan"` (:140) → `facade.createMealPlan(...)` → `printPlan` (:319).
+`app/SmartPlateApp.java:35` `main` → `MealPlannerCLI.runLoop` (:76) reads a line →
+`handle` (:112) → `case "plan"` (:144) → `facade.createMealPlan(...)` → `printPlan` (:324).
 The same facade method as the GUI, so the behaviour is identical.
 
 ---
@@ -557,8 +557,8 @@ Regular expressions (:28–31), all applied to the lower-cased request:
 | `AVOID` | avoid/no/without/skip + **one word** | "avoid mushrooms" → mushrooms |
 | diets | any word from `UserProfile.SUPPORTED_DIETS` | "something vegan" → vegan |
 
-`NOT_INGREDIENTS` (:41) stops "no more than 20 min" from adding "more" as a dislike.
-`planDays` (:145) throws if not 5–7. `applyTo` (:177) returns a **copy** of the profile with the extra
+`NOT_INGREDIENTS` (:43) stops "no more than 20 min" from adding "more" as a dislike.
+`planDays` (:173) throws if not 5–7. `applyTo` (:206) returns a **copy** of the profile with the extra
 diets, dislikes and a stricter time limit, so the saved profile never changes.
 
 ### 9.6 `domain/DietRules.java` — matching ingredients to allergies and diets
@@ -703,18 +703,18 @@ runs, `AssistantPanel.onBusyChange` tells the window to disable both boxes. Swit
 
 ## 11. The CLI
 
-`presentation/MealPlannerCLI.java`: `runLoop` (:72) reads lines until `quit`; `handle` (:108) is one
-big `switch` on the first word. Commands are listed in `HELP` (:35): `profile`, `pantry`, `recipes`,
+`presentation/MealPlannerCLI.java`: `runLoop` (:76) reads lines until `quit`; `handle` (:112) is one
+big `switch` on the first word. Commands are listed in `HELP` (:39): `profile`, `pantry`, `recipes`,
 `search`, `show`, `recommend`, `plan`, `showplan`, `edit`, `undo`, `scale`, `substitute`, `reset`,
-`nutrition`, `shopping`, `strategy`, `trace`. Parsing helpers: `profile` (:194, `key=value` pairs),
-`pantry` (:244, "pantry add olive oil 500 ml" → name = everything before the last 2 words).
+`nutrition`, `shopping`, `strategy`, `trace`. Parsing helpers: `profile` (:199, `key=value` pairs),
+`pantry` (:249, "pantry add olive oil 500 ml" → name = everything before the last 2 words).
 Errors print as `Error: <message>`; the loop never crashes on a `SmartPlateException`.
 
 ---
 
 ## 12. Tests
 
-`mvn test` runs **129 tests** in 21 classes, all offline (no real AI is called):
+`mvn test` runs **132 tests** in 21 classes, all offline (no real AI is called):
 
 | Test class | What it protects |
 |---|---|
@@ -779,7 +779,7 @@ Order matters: the **first** one that fits the profile wins.
 1. New class `strategy/HighProteinStrategy.java` implementing `RecipeSelectionStrategy` (copy
    `FastestMealStrategy`, sort by `-recipe.getNutritionPerServing().getProtein()`).
 2. `SmartRecipeFacade.setStrategy` (:243): add `else if (key.startsWith("protein")) strategy = new HighProteinStrategy();`.
-3. GUI: add `"protein"` to the combo in `MealPlannerGUI.statusArea` (:122). CLI help text in `MealPlannerCLI.HELP` (:35).
+3. GUI: add `"protein"` to the combo in `MealPlannerGUI.statusArea` (:122). CLI help text in `MealPlannerCLI.HELP` (:39).
 4. Add to `StrategyTest`. Update the class diagram.
 
 ### 13.6 Add a new feature end to end (the pattern to follow)
@@ -830,8 +830,8 @@ New `JPanel` class in `presentation/gui/` that takes the facade in its construct
 | Symptom | Look in |
 |---|---|
 | Wrong recipe allowed / blocked for an allergy or diet | `DietRules.matches` (:82), ingredient categories in `SampleData` |
-| "avoid X" / "under N minutes" in a request ignored | `RequestConstraints` patterns and word lists (:28–:43) |
-| Plan has wrong number of days | `RequestConstraints.planDays` (:145), `Days.firstDays` |
+| "avoid X" / "under N minutes" in a request ignored | `RequestConstraints` patterns and word lists (:29–:45) |
+| Plan has wrong number of days | `RequestConstraints.planDays` (:173), `Days.firstDays` |
 | AI answer rejected unexpectedly | trace → `MealPlanningAgent.parsePlan` / `parseIdList`; `PromptFormat.field` |
 | Odd shopping quantities | `PlannedMeal.getIngredients` (scaling), `ShoppingList.consolidate`, `ShoppingListService.generate` |
 | Pantry merge problems | `Pantry.addItem` (:20), `Units.convert` |
@@ -853,11 +853,13 @@ New `JPanel` class in `presentation/gui/` that takes the facade in its construct
 |---|---|---|
 | Shopping list showed "13.5 pcs garlic" | counted items are rounded up to whole numbers, with a note | `ShoppingList.roundUpQuantities` (:60), called from `ShoppingListService.generate` (commit `6bfd56c`) |
 | "sun-dried" in an edit request was read as Sunday | hyphenated words stay whole; only full day names count inside them | `Days.findIn` (:38), used by the agent and the mock (`f70e701`) |
-| "avoid red onion" only avoided "red"; "skip the mushrooms" avoided nothing | the whole phrase is read, lists are split on and/or | `RequestConstraints.avoidedItems` (:114) (`86b5b1e`) |
+| "avoid red onion" only avoided "red"; "skip the mushrooms" avoided nothing | the whole phrase is read, lists are split on and/or | `RequestConstraints.avoidedItems` (:116) (`86b5b1e`) |
 | Disliking "milk" also blocked coconut milk, oat milk, peanut butter | a dislike of a dairy word ignores non-dairy ingredients named after it; allergies stay strict | `DietRules.matchesDislike` (:106) (`db82527`) |
 | The AI model could change in the middle of a request | each request keeps the model it started with; the model and strategy boxes are disabled while it runs | `MealPlanningAgent` (:104), `AssistantPanel.onBusyChange` (:441) (`9deb476`) |
 | "jalapeño" was a malformed entry | any letters are accepted; accents are ignored when matching | `UserProfile.checkEntries` (:110), `DietRules.withoutAccents` (:50) (`82148d6`) |
 | — | edge tests: exactly 5/7 days, 4/8 rejected, smallest profile values, scaling to 1 serving | tests (`94a8a8a`) |
+| A second `undo` in the CLI printed "Undone." before "Nothing to undo." | undo first, then print | `MealPlannerCLI` undo case (`f8fe10f`) |
+| "dinner for 9.5 days" was read as 5 days; decimal time limits and servings were ignored | decimals are read: days round to the nearest day (a half toward 5–7), counts and servings to nearest, time limits down | `RequestConstraints.roundTowardRange`, `number` (`c022ae4`) |
 
 **Still open:**
 1. **The mock AI is simple.** "Swap Tuesday for something with spinach" may pick a recipe without
@@ -875,7 +877,7 @@ New `JPanel` class in `presentation/gui/` that takes the facade in its construct
    copy the loop from `createPlan`, and update SD05 too.
 6. **Allergies match by name on purpose.** An allergy to "milk" also blocks "coconut milk". That is
    the safe choice for allergies; dislikes no longer do this.
-7. **Claude was never run live.** Gemini and the local Ollama model (gemma4:e4b) were run by the team;
+7. **Claude was never run live.** Gemini and the local Ollama model (gemma4:e4b) were run by the author;
    the Claude path is only unit-tested (request building, error handling).
 
 ### 14.4 Common Java errors and what they mean

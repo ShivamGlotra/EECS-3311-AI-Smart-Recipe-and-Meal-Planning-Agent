@@ -1,10 +1,11 @@
 # SmartPlate — Stage 2 Implementation Report
 
 **EECS 3311, Fall 2026 · AI-Human Collaborative Implementation**
+Author: Shivam Glotra (individual project)  
 Repository: <https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent>
 
-> Fields marked **[Team]** are facts only the team can supply (video links, other tools used, the
-> team's own review notes). Fill them in before exporting the final PDF.
+> Still to add before submission: the video links (§7), the commits of 3–9 November (§6.1), and the
+> LLM model name in §5.1.
 
 ## Contents
 1. Project overview and implementation status
@@ -38,15 +39,15 @@ reports the failure. Four interchangeable models implement `AIModel`:
 |---|---|---|
 | Mock AI (offline, deterministic) | `MockAIModel` | default without keys; all automated tests |
 | Google Gemini (REST API) | `GeminiAdapter` | free/cheap cloud model, key in `.env` |
-| Local model through Ollama (team uses `gemma4:e4b`) | `OllamaAdapter` | free, runs on the user's machine |
+| Local model through Ollama (used: `gemma4:e4b`) | `OllamaAdapter` | free, runs on the user's machine |
 | Anthropic Claude (official Java SDK) | `AIAdapter` → `AIClient` | optional, key in `.env` |
 
 The model is chosen from `.env` at start-up and can be switched at run time in the GUI (feature F11).
 
 **Implementation status.** All ten Stage 1 features (F01–F10) and one new feature (F11, AI model
 selection) work in both the GUI and the CLI. All five Stage 1 design patterns are implemented, plus a
-Factory for model creation. `mvn test` runs **129 automated tests (0 failures)**. Gemini and the local
-Ollama model were run by the team; the Claude path is implemented but was only unit-tested, because no
+Factory for model creation. `mvn test` runs **132 automated tests (0 failures)**. Gemini and the local
+Ollama model were run by the author; the Claude path is implemented but was only unit-tested, because no
 Anthropic key was available.
 
 **Limitations (honest list).**
@@ -346,12 +347,12 @@ The updated SD03, SD04 and SD05 are in `docs/umlet-diagrams/stage2/sequence/` (P
 |---|---|---|---|---|
 | 1 | Request text goes to the AI; the validator checks the **profile** (F04–F06) | `RequestConstraints` reads diet, "avoid …", time limit, number of days/items and servings from the request; `UserProfile.withRequestConstraints` adds them to a copy of the profile | An LLM can ignore constraints that are only in the prompt; this keeps "AI chooses, Java checks" true for the request too | New class in `agent/`; SD03–SD05 updated; the stored profile is never changed |
 | 2 | `AIClient.sendRequest(prompt : String) : String` | `sendRequest(MessageCreateParams) : Message` (Anthropic SDK types) | With strings on both sides there would be nothing to adapt; now `AIClient` is a real adaptee | Adapter matches the textbook roles; agent unaffected |
-| 3 | One external LLM behind `AIAdapter → AIClient` | `GeminiAdapter`, `OllamaAdapter` added; `AIModelFactory` picks one | Free/cheap models for the team (the course allows any cheap or free model); the design planned for provider changes | Agent unchanged; new Factory pattern; tests with fake servers |
+| 3 | One external LLM behind `AIAdapter → AIClient` | `GeminiAdapter`, `OllamaAdapter` added; `AIModelFactory` picks one | Free/cheap models for the author (the course allows any cheap or free model); the design planned for provider changes | Agent unchanged; new Factory pattern; tests with fake servers |
 | 4 | Model fixed at start | F11: switch in the GUI; `MealPlanningAgent.setAIModel`, `SmartRecipeFacade.setAIProvider`; one model per request; boxes locked while a request runs | Compare models in a demo; avoid a request answered by two models | New UC11 / SD07; GUI still only uses the facade |
 | 5 | "Key from an environment variable" | `EnvFile` also reads a git-ignored `.env`; `.env.example` with placeholders | Easier local setup without committing keys (Stage 2 key-protection rule) | New class; README explains copy → fill → run |
 | 6 | Free-form prompt and answer | `PromptFormat` `KEY: value` protocol shared by agent, mock and real models | Reliable parsing; the mock exercises the same parsing code | New class in `ai/` |
 | 7 | Validation "using each recipe's ingredient list" | `DietRules` (ingredient-level matching: plurals, food groups, accents, dairy dislikes) and `Units` (unit conversion) | Validator, strategies, substitution and pantry need one shared set of rules | Two helper classes in `domain/` |
-| 8 | Ten GUI screens (Appendix B) | Four tabs (AI Assistant, Recipes, Pantry, Preferences) built from `presentation/gui/*`; "Clean Slate" design chosen by the team | Fewer screen switches, every Appendix B screen still present | `MealPlannerGUI` delegates to four panels and small UI helpers |
+| 8 | Ten GUI screens (Appendix B) | Four tabs (AI Assistant, Recipes, Pantry, Preferences) built from `presentation/gui/*`; "Clean Slate" design chosen by the author | Fewer screen switches, every Appendix B screen still present | `MealPlannerGUI` delegates to four panels and small UI helpers |
 | 9 | Conceptual CLI commands (`recipe search`, `plan create` …) | Short commands (`search`, `recommend`, `plan`, `edit`, `undo`, `scale`, …) plus `strategy` and `trace` | Shorter to type; `trace` shows the agent's steps | CLI help documents all commands |
 | 10 | Facade shows `currentPlan` and the 12 feature methods | Facade also owns profile, pantry, last substitution; read methods for the UIs | UIs must display state without bypassing the facade | Layering preserved |
 | 11 | `editPlan` with the day in the request | If no day is named, the AI chooses it (validated); `Days.findIn` keeps hyphenated words whole | Natural requests ("swap the shrimp dish …"); fixes "sun-dried" = Sunday | SD05 updated |
@@ -359,14 +360,15 @@ The updated SD03, SD04 and SD05 are in `docs/umlet-diagrams/stage2/sequence/` (P
 | 13 | Errors shown as "error" returns | `SmartPlateException`, `InvalidProfileException`, `AIServiceException` | One user-facing message for both UIs, shown next to the field | New exception classes |
 | 14 | Shopping list quantities as computed | Counted items rounded up to whole pieces, with a note | People buy whole items | `ShoppingList.roundUpQuantities` |
 | 15 | Disliking an ingredient blocks every name containing it | A disliked dairy food ignores non-dairy ingredients named after it; allergies unchanged | "Milk" dislike blocked oat milk, its own substitute | `DietRules.matchesDislike` |
-| 16 | Not specified | `Days`, `SampleData` (30 recipes, pantry, 33 substitutions), `SmartPlateApp`, `MAX_CANDIDATES = 15` | Needed to run; short prompts | — |
+| 16 | Numbers in a request read as digits only ("9.5 days" was read as 5 days) | Decimals are read; days round to the nearest whole day, a half toward 5–7; recipe counts and servings round to nearest; time limits round down; huge numbers are an error | A user found that "dinner for 9.5 days" silently produced a 5-day plan | `RequestConstraints.roundTowardRange`, `number`; two tests |
+| 17 | Not specified | `Days`, `SampleData` (30 recipes, pantry, 33 substitutions), `SmartPlateApp`, `MAX_CANDIDATES = 15` | Needed to run; short prompts | — |
 
 ### 4.2 New and substantially modified features (Section 3 of the instructions)
 
 **F11 AI Model Selection — new.** (1) Original: none (new). (2) Implemented: the AI model box lists Mock,
 Claude, Gemini and Ollama; choosing one switches the agent's model, or explains which key is missing;
 start-up choice from `.env`/`SMARTPLATE_AI_PROVIDER`; `--mock` forces the mock. (3) Why: the course allows
-cheap or free models and the team wanted to compare a free local model with a cloud model; the Stage 1
+cheap or free models and the author wanted to compare a free local model with a cloud model; the Stage 1
 design already promised provider independence. (4) User need: users without a paid key can still use a
 real LLM (local Ollama), and everyone can run offline. (5) Affected: new UC11 and SD07; classes
 `AIModelFactory`, `EnvFile`, `GeminiAdapter`, `OllamaAdapter`, `MealPlannerGUI`, `SmartRecipeFacade`,
@@ -405,66 +407,66 @@ The five Stage 1 patterns are all implemented; none was replaced.
 
 | Tool / platform | LLM model | Features, classes or tasks | Tokens and cost |
 |---|---|---|---|
-| **Claude Code** (Anthropic's coding agent, used in claude.ai/code cloud sessions) | **[Team]** — record the model exactly as shown in the Claude Code session details | Generated the implementation of F01–F10 and the five patterns, the GUI redesign, the Gemini/Ollama adapters and the model switcher, most tests, the docs and this report's draft; diagnosed defects A1–A6 and wrote the proposed fixes the team applied; produced the Stage 2 UMLet diagrams | One session, 5–29 Oct 2026 (session usage record, as of 29 Oct): **93,041** input tokens, **751,231** output tokens, **139,867,422** cache-read tokens, **4,516,068** cache-write tokens; reported cost **≈ US$79.01**. **[Team]** update with the final numbers and state whether this was billed or covered by a subscription. |
-| **[Team]** other tools (e.g. a chat assistant used for the Stage 1 report or for `AIModelFactory`) | **[Team]** | **[Team]** | **[Team]** |
+| **Claude Code** (Anthropic's coding agent, used in claude.ai/code cloud sessions) | *(model name as shown in the Claude Code session details)* | Generated the implementation of F01–F10 and the five patterns, the GUI redesign, the Gemini/Ollama adapters and the model switcher, most tests, the docs and this report's draft; diagnosed defects A1–A8, wrote the proposed fixes (the author applied A1–A7; A8 was committed by Claude Code at the author's request); produced the Stage 2 UMLet diagrams | **Money:** a Claude Pro subscription plus the US$100 of welcome usage credits that came with it, fully used; another month of Pro may be needed for Stage 3. **Tokens** (one session, 5–30 Oct 2026, from the session's usage record on 30 Oct): **94,291** input, **923,259** output, **228,438,517** cache-read and **5,327,924** cache-write tokens; usage valued at **≈ US$106.67** at API prices. |
+
+No other AI tools were used. SmartPlate is an individual project, so every human contribution below is the author's.
 
 **LLMs inside the product (run time, not development tools):** Mock AI (offline), Google Gemini
-(`GEMINI_MODEL`, default `gemini-flash-latest`), a local Ollama model (team: `gemma4:e4b`), and
-optionally Anthropic Claude (`SMARTPLATE_AI_MODEL`). **[Team]** add any API cost you incurred while
-running them.
+(`GEMINI_MODEL`, default `gemini-flash-latest`), a local Ollama model (used: `gemma4:e4b`), and
+optionally Anthropic Claude (`SMARTPLATE_AI_MODEL`). Gemini and Ollama were used through free APIs, so
+running them cost nothing; Claude was not used at run time.
 
 ### 5.2 Representative AI–human interactions
 
-Drafted from the Claude Code session history; **[Team]** confirm each entry and add your own review
-notes and other interactions.
+Drawn from the Claude Code session history and confirmed by the author.
 
 | # | Task | Input / instruction | AI contribution | Human contribution | Outcome |
 |---|---|---|---|---|---|
-| CL-01 (5 Oct) | Implement the Stage 1 design in Java | "Make the complete project in Java implementing every feature as said in the report …" | Generated all classes from the class diagram, sample data, GUI and CLI over the facade, 88 tests, code documentation; followed SD05 where the text was silent (one AI attempt for edits) | Wrote the design that was implemented; chose the branch holding the final design. **[Team]** review notes | Incorporated (commit `0f85939`) |
+| CL-01 (5 Oct) | Implement the Stage 1 design in Java | "Make the complete project in Java implementing every feature as said in the report …" | Generated all classes from the class diagram, sample data, GUI and CLI over the facade, 88 tests, code documentation; followed SD05 where the text was silent (one AI attempt for edits) | Wrote the design that was implemented; chose the branch holding the final design | Incorporated (commit `0f85939`) |
 | CL-02 (5 Oct) | Front-end options and a backend guide | Asked how a React/Flutter front end could use the Java logic, then for a Spring Boot guide; "do not make it or run … Do not make anything" | Explained the REST approach; wrote a conversion guide; stopped verifying it by building when told | Kept the AI to explanation only, protecting the project scope | Not incorporated (personal reference) |
 | CL-03 (15 Oct) | GUI design proposals | "Give me a bunch of designs … and a Figma AI prompt" | Mockups of several directions with real sample data; Figma prompt | Asked whether the AI had read the code first; corrected the platform ("it is a desktop app, only light mode"); showed the current GUI; chose Direction B | Direction B became the specification |
 | CL-04 (15 Oct) | Implement Direction B in Swing | Build it on a new branch | Four tab panels, FlatLaf theme, 14 GUI tests; tests and screenshots exposed four GUI bugs, which it fixed | Chose the design; required a separate branch; supplied the submitted Stage 1 report | Incorporated (`e4c412d`) |
-| CL-05 (15 Oct) | Make the code understandable to the team | "Give me a complete guide … (I know React, not much Java)" | `DEVELOPER_GUIDE.md` with React analogies, function reference, walkthroughs | Asked for a format the team can learn from and maintain | Incorporated, kept up to date |
+| CL-05 (15 Oct) | Make the AI-written code understandable to its author | "Give me a complete guide … (I know React, not much Java)" | `DEVELOPER_GUIDE.md` with React analogies, function reference, walkthroughs | Asked for a format the author can learn from and maintain | Incorporated, kept up to date |
 | CL-06 (15 Oct) | Question a technical choice | "Why JDK 21? … Why not JDK 25?" | Explained the Java 17 target and why 21 was recommended | Challenged an unexplained decision | No change |
-| CL-07 (15 Oct) | Choose the AI model by configuration | Team design: `OllamaAdapter implements AIModel`; team wrote `AIModelFactory` and the new `SmartPlateApp.chooseModel` | Added the team's files unchanged; wrote `OllamaAdapter` to the factory's API; tested with a fake server; merged the team's Stage 1 merge into its branch | Designed the extension with the Stage 1 Adapter; wrote the factory; ran the app with `gemma4:e4b` | Incorporated (`7451c60`) |
+| CL-07 (15 Oct) | Choose the AI model by configuration | The author's design: `OllamaAdapter implements AIModel`; the author wrote `AIModelFactory` and the new `SmartPlateApp.chooseModel` | Added the author's files unchanged; wrote `OllamaAdapter` to the factory's API; tested with a fake server; merged the author's Stage 1 merge into its branch | Designed the extension with the Stage 1 Adapter; wrote the factory; ran the app with `gemma4:e4b` | Incorporated (`7451c60`) |
 | CL-08 (15 Oct) | Keep API keys out of git | "Can I have some safe way of adding the key that I don't have to push?" | Started implementing `.env` support **before approval** | Stopped it: "Don't keep adding things unless I ask. Tell me first."; reviewed and approved the change | Incorporated (`6eacd8f`) |
 | CL-09 (15 Oct) | Gemini and a model switcher | "Add an adapter for Gemini … proper commits … an option on top right to switch models" | `GeminiAdapter` (chose the `gemini-flash-latest` alias after conflicting sources), switcher, four commits; fixed a truncated label found in a screenshot | Ran the app with both models locally; decided model names belong in `.env` | Incorporated (`5430d5a`, `4bf232f`) |
 | CL-10 (23–28 Oct) | Check against the Stage 2 instructions | Pasted the Stage 2 PDF; "scan the repo … give me a roadmap" | Gap analysis (report format, UML, videos, commits); scanned history for leaked keys (none) | Set the scope; told the professor about the early start; chose the branching strategy (`develop` + `fix/*`) | Roadmap (phases A–F) |
 | CL-11 (28 Oct) | Fix defects A1–A3 | "I can fix it. Just tell me where and how" | Reproduced each defect, explained the cause, wrote the code, tests and CLI/GUI test steps | **Implemented, tested and committed the fixes on separate branches**; kept the model defaults as they were | Incorporated (`6bfd56c`, `f70e701`, `86b5b1e`) |
 | CL-12 (29 Oct) | Fix defects A4–A6 | "Give me all remaining fixes together … I will do it branch by branch" | Prepared and pre-tested four fixes on a scratch copy, plus patch files and test prompts | Applied each fix on its own branch, ran the checks, merged through PRs #6–#9 | Incorporated (`db82527`, `9deb476`, `82148d6`, `94a8a8a`) |
 | CL-13 (29 Oct) | Stage 2 UML | Phase B | First drew the diagrams in PlantUML | Corrected the format: "We have to submit UMLet files" | Diagrams redone as UMLet `.uxf` (same style as Stage 1) |
-| CL-14 (29 Oct) | Prepare the feature videos | Phase E1: a recording script | Wrote `docs/DEMO_SCRIPT.md` after running every error case in the CLI; found that a second `undo` printed "Undone." before the error, and prepared a fix with a test | **[Team]** applied the fix (A7) on a fix branch and recorded the videos | **[Team]** |
-| CL-15+ | **[Team]** | | | | |
+| CL-14 (29 Oct) | Prepare the feature videos | Phase E1: a recording script | Wrote `docs/DEMO_SCRIPT.md` after running every error case in the CLI; found that a second `undo` printed "Undone." before the error, and prepared a fix with a test | Applied the A7 fix and committed it | Incorporated (`f8fe10f`) |
+| CL-15 (29 Oct) | A bug found by the author | "Give me dinner for 9.5 days gives me a 5 day dinner"; then "round down or up whichever is closer" | Traced it to the number patterns (other decimals were also misread or ignored); implemented the rounding rule with two tests on `fix/decimalNumbersInRequests`; committed and pushed at the author's request | Found the bug; chose the rounding behaviour; reviewed and merged the branch (PR #10) | Incorporated (`c022ae4`) |
 
 ---
 
 ## 6. Development and verification summary
 
 ### 6.1 Branching strategy and commit summary
-The team uses `main` ← `develop` ← short-lived `fix/*` / `feat/*` branches, merged through pull requests
+The author uses `main` ← `develop` ← short-lived `fix/*` / `feat/*` branches, merged through pull requests
 with merge commits (no squash), so every commit stays visible. To count meaningful code commits on all
 branches: `git log --all --no-merges -- src pom.xml`.
 
-Implementation started before the Stage 2 period (the professor was informed); the team counts total
+Implementation started before the Stage 2 period (the professor was informed); the stage counts total
 meaningful code commits across the stage.
 
 | Period (Toronto) | Meaningful code commits | Links |
 |---|---|---|
 | Before 20 Oct (early start) | 6 | [`0f85939`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/0f85939c6cf498b749ec0e24d527c96565d3591b) implementation of F01–F10 · [`e4c412d`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/e4c412df9004fba55bcb14b27702dc242b704e68) GUI redesign · [`7451c60`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/7451c60947415adcdcc0c1c4f940b401cb9ad672) model factory + Ollama · [`6eacd8f`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/6eacd8fedfb780e9351a36dcabe472a103effa15) `.env` · [`5430d5a`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/5430d5a60b560e6fe536aed9e9854072f8301ff5) Gemini · [`4bf232f`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/4bf232f8db80604dadf4b7e2ee406d4f345781bd) model switcher |
 | 1: 20–26 Oct | 0 | (planning against the Stage 2 instructions) |
-| 2: 27 Oct – 2 Nov | 7 so far | [`6bfd56c`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/6bfd56cb0beb90b7119c453886d2a93d1510aee3) whole-piece rounding · [`f70e701`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/f70e7019f2aec6cc3a948f6c0e9217382b0f8389) "sun-dried" day fix · [`86b5b1e`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/86b5b1e1cf74bcc80ce37ec172a38af6f112368e) multi-word avoid · [`db82527`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/db8252718e733b5973c79732fa81ece07d831b12) dairy dislikes · [`9deb476`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/9deb476d92eb3612731fb4691d64040870ee2fe8) one model per request · [`82148d6`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/82148d65124a2bb52b3e12a67ef1a88d8f01e81a) accented entries · [`94a8a8a`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/94a8a8af23cd176977b6dbfc8b441bfc0bd1f3e7) boundary tests |
-| 3: 3–9 Nov | **[Team]** | **[Team]** add the commits made in this period |
-| **Total** | **13 so far** | 15 required in total |
+| 2: 27 Oct – 2 Nov | 9 | [`6bfd56c`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/6bfd56cb0beb90b7119c453886d2a93d1510aee3) whole-piece rounding · [`f70e701`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/f70e7019f2aec6cc3a948f6c0e9217382b0f8389) "sun-dried" day fix · [`86b5b1e`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/86b5b1e1cf74bcc80ce37ec172a38af6f112368e) multi-word avoid · [`db82527`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/db8252718e733b5973c79732fa81ece07d831b12) dairy dislikes · [`9deb476`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/9deb476d92eb3612731fb4691d64040870ee2fe8) one model per request · [`82148d6`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/82148d65124a2bb52b3e12a67ef1a88d8f01e81a) accented entries · [`94a8a8a`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/94a8a8af23cd176977b6dbfc8b441bfc0bd1f3e7) boundary tests · [`f8fe10f`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/f8fe10f19174e2c19e2413b9d536fdd188cca66d) CLI undo message · [`c022ae4`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/c022ae494397df99984956f9f1974aa27eb0614f) decimal numbers in requests |
+| 3: 3–9 Nov | *(to be added)* | |
+| **Total** | **15** | 15 required in total |
 
-Pull requests: #3–#9 (one per fix branch). Documentation-only commits (report, diagrams, README) are not
+Pull requests: #3–#10 (one per fix branch; A7 was committed directly on `develop`). Documentation-only commits (report, diagrams, README) are not
 counted.
 
 ### 6.2 Checks performed
-* **Automated tests:** `mvn test` → **129 tests, 0 failures** (JUnit 5, all offline; 16 GUI tests run
+* **Automated tests:** `mvn test` → **132 tests, 0 failures** (JUnit 5, all offline; 16 GUI tests run
   headless). The agent loop is tested with scripted bad AI answers; every AI adapter is tested against
   a fake server speaking its API.
 * **Running the application:** the packaged jar was run through the CLI and the GUI after each change
-  (GUI on a virtual display, with screenshots); the team ran it on their machines with Gemini and with
+  (GUI on a virtual display, with screenshots); the author ran it locally with Gemini and with
   the local Ollama model `gemma4:e4b`.
 * **Each defect fix:** reproduced first (CLI/GUI), then a test that fails without the fix and passes with
   it, then the CLI/GUI check repeated.
@@ -484,7 +486,8 @@ counted.
 | A4 disliking milk blocked oat milk as milk's substitute | substitution test | `DietRules.matchesDislike` (`db82527`; the commit message says "allergy", but the change applies to dislikes; allergies stay strict) |
 | A5 a request could use two models if switched mid-way | code review | one model per request, boxes locked (`9deb476`) |
 | A6 "jalapeño" rejected as malformed | manual test | accented letters accepted (`82148d6`) |
-| A7 CLI printed "Undone." and then "Nothing to undo." | checking every error case for the demo script | undo first, print after; new CLI test (**[Team]** commit id) |
+| A7 CLI printed "Undone." and then "Nothing to undo." | checking every error case for the demo script | undo first, print after; new CLI test (`f8fe10f`) |
+| A8 "dinner for 9.5 days" made a 5-day plan; decimal time limits and servings were ignored | reported by the author while testing | decimals read and rounded, a half toward 5–7 days; huge numbers are an error (`c022ae4`) |
 
 ### 6.4 Remaining limitations
 See §1. Stage 3 will add the full deterministic test report and the KUMA agent-behaviour testing.
@@ -495,18 +498,18 @@ See §1. Stage 3 will add the full deterministic test report and the KUMA agent-
 
 Each implemented feature has a labelled video segment. Recordings use a real model (Gemini or the local
 Ollama model) for the AI features and show both the GUI and the CLI. The recording script is in
-`docs/DEMO_SCRIPT.md`. **[Team]** paste the links and timestamps.
+`docs/DEMO_SCRIPT.md`. Links and timestamps are added after recording.
 
 | Feature | Shown in | Link / timestamp |
 |---|---|---|
-| F01 Preference Profile Management | GUI + CLI (invalid profile error) | **[Team]** |
-| F02 Pantry Inventory Management | GUI (merge units, error) + CLI | **[Team]** |
-| F03 Recipe Search | GUI + CLI (empty query error) | **[Team]** |
-| F04 AI Recipe Recommendation | GUI with trace + CLI | **[Team]** |
-| F05 AI Weekly Meal Planning | GUI (avoid, time limit; 8-day error) + CLI | **[Team]** |
-| F06 Meal Plan Editing and Undo | GUI (CHANGED marker, Undo) + CLI | **[Team]** |
-| F07 Serving-Size Adjustment | GUI + CLI | **[Team]** |
-| F08 Ingredient Substitution | GUI (dislike milk → oat milk) + CLI | **[Team]** |
-| F09 Nutrition Information | GUI (recipe and plan) + CLI | **[Team]** |
-| F10 Shopping List Generation | GUI (pantry subtracted, whole pieces) + CLI | **[Team]** |
-| F11 AI Model Selection (new) | GUI (switch model, missing-key message, boxes locked during a request) | **[Team]** |
+| F01 Preference Profile Management | GUI + CLI (invalid profile error) | *(to be added)* |
+| F02 Pantry Inventory Management | GUI (merge units, error) + CLI | *(to be added)* |
+| F03 Recipe Search | GUI + CLI (empty query error) | *(to be added)* |
+| F04 AI Recipe Recommendation | GUI with trace + CLI | *(to be added)* |
+| F05 AI Weekly Meal Planning | GUI (avoid, time limit; 8-day error) + CLI | *(to be added)* |
+| F06 Meal Plan Editing and Undo | GUI (CHANGED marker, Undo) + CLI | *(to be added)* |
+| F07 Serving-Size Adjustment | GUI + CLI | *(to be added)* |
+| F08 Ingredient Substitution | GUI (dislike milk → oat milk) + CLI | *(to be added)* |
+| F09 Nutrition Information | GUI (recipe and plan) + CLI | *(to be added)* |
+| F10 Shopping List Generation | GUI (pantry subtracted, whole pieces) + CLI | *(to be added)* |
+| F11 AI Model Selection (new) | GUI (switch model, missing-key message, boxes locked during a request) | *(to be added)* |
