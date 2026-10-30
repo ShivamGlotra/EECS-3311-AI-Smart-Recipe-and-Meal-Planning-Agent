@@ -8,6 +8,7 @@ import com.smartplate.domain.PantryItem;
 import com.smartplate.facade.SmartRecipeFacade;
 import com.smartplate.presentation.MealPlannerCLI;
 import com.smartplate.presentation.MealPlannerGUI;
+import com.smartplate.presentation.MealPlannerJsonSession;
 import com.smartplate.service.SampleData;
 
 import java.awt.GraphicsEnvironment;
@@ -20,6 +21,8 @@ import java.util.List;
  * <pre>
  *   java -jar smartplate.jar            GUI (or CLI if no display is available)
  *   java -jar smartplate.jar --cli      command-line interface
+ *   java -jar smartplate.jar --json     one JSON request per line in, one JSON reply per line out
+ *                                       (used by the Stage 3 KUMA agent tests)
  *   java -jar smartplate.jar --mock     force the offline Mock AI whatever the environment says
  *   java -jar smartplate.jar --empty    start with an empty pantry
  * </pre>
@@ -48,7 +51,9 @@ public final class SmartPlateApp {
                 facade.managePantry(PantryAction.ADD, item);
             }
         }
-        if (options.contains("--cli") || GraphicsEnvironment.isHeadless()) {
+        if (options.contains("--json")) {
+            new MealPlannerJsonSession(facade, System.in, System.out).runLoop();
+        } else if (options.contains("--cli") || GraphicsEnvironment.isHeadless()) {
             new MealPlannerCLI(facade, System.in, System.out).runLoop();
         } else {
             new MealPlannerGUI(facade).start();
