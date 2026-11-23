@@ -71,7 +71,8 @@ All paths are under `src/main/java/com/smartplate/`. Every feature is reached th
 `SmartRecipeFacade` from both `MealPlannerGUI` (via the tab panels in `presentation/gui/`) and
 `MealPlannerCLI`. "Video" links are filled in from §7. Each feature states its original Stage 1
 requirement and shows screenshots of the running application (GUI; the CLI is shown at the end of this
-section). The AI screenshots use the offline Mock AI; the videos show the real model (gemma4 via Ollama).
+section). The AI features (F04–F06, F11) are shown with the local model `gemma4:e4b` through Ollama;
+the deterministic features were captured with the offline Mock AI selected (no AI is involved in them).
 
 ### F01 — Preference Profile Management
 
@@ -171,7 +172,7 @@ recipes that fail validation become violations; the agent then asks once more wi
 
 ![F04: validated recommendations and the agent trace](screenshots/stage2/F04-recommend.png)
 
-*F04: validated recommendations and the agent trace.*
+*F04 with gemma4: three recommendations, each validated against the profile; the trace shows the shortlist, the AI's answer and the validation.*
 
 ### F05 — AI Weekly Meal Planning
 
@@ -194,7 +195,7 @@ One revision is allowed; the facade stores the valid plan and clears the undo hi
 
 ![F05: a validated 5-day plan; the trace shows the constraints read from the request](screenshots/stage2/F05-plan.png)
 
-*F05: a validated 5-day plan; the trace shows the constraints read from the request.*
+*F05 with gemma4: a validated 5-day plan; the trace shows the constraints read from the request (5 days, max 40 min, avoid red onion and mushrooms) and the AI's answer.*
 
 ![F05: an 8-day plan is rejected before the AI is asked](screenshots/stage2/F05-plan-error.png)
 
@@ -221,7 +222,7 @@ the facade runs through `CommandHistory`; Undo pops it and restores the old meal
 
 ![F06: only Tuesday changes (CHANGED marker, before → now); Undo restores it](screenshots/stage2/F06-edit.png)
 
-*F06: only Tuesday changes (CHANGED marker, before → now); Undo restores it.*
+*F06 with gemma4: only Tuesday changes, to a recipe with spinach (CHANGED marker, before → now); Undo restores it.*
 
 ### F07 — Serving-Size Adjustment
 
@@ -333,9 +334,13 @@ previous model stays and the box shows the reason. Otherwise the factory builds 
 agent uses it from the next request on; a running request keeps the model it started with. The CLI uses
 the start-up choice (`--provider NAME`, `--mock`, or `.env`).
 
-![F11: the AI model box; the red outline shows that switching to Claude without a key was refused and the current model was kept](screenshots/stage2/F11-model-list.png)
+![F11: the AI model box with Ollama (gemma4:e4b) in use](screenshots/stage2/F11-model-list.png)
 
-*F11: the AI model box; the red outline shows that switching to Claude without a key was refused and the current model was kept.*
+*F11: the AI model box shows the model in use, Ollama (gemma4:e4b); the list offers Mock, Claude, Gemini and Ollama.*
+
+![F11: switching to Claude without a key is refused](screenshots/stage2/F11-model-refused.png)
+
+*F11 error case: switching to Claude without a key was refused; the previous model stays and the box is outlined in red.*
 
 ### Standalone command-line interface (CLI)
 
