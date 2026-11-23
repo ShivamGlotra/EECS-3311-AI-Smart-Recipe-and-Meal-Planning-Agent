@@ -198,6 +198,8 @@ Other commands: `search <words>`, `show <id>`, `scale <id> <servings>`, `substit
 - **Stage 2 report:** [stage2-report.pdf](stage2-report.pdf) / [stage2-report.docx](stage2-report.docx) (source: [docs/STAGE2_REPORT.md](docs/STAGE2_REPORT.md))
 - **Feature demonstration videos** (F01–F11 and the CLI): links in §7 *Demonstration index* of the Stage 2 report,
   and in the "Video" row of each feature in §2
+- **Task demo video** (one task in the GUI, then the same task in the CLI with `--input`):
+  [https://drive.google.com/file/d/10y-DfH9LhKKKqrnyWkr_b7foVIDHus24/view](https://drive.google.com/file/d/10y-DfH9LhKKKqrnyWkr_b7foVIDHus24/view)
 - Stage 2 UML of the implemented system: [docs/umlet-diagrams/stage2/](docs/umlet-diagrams/stage2/)
 - Feature demonstration script: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)
 - Code explanation: [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)
