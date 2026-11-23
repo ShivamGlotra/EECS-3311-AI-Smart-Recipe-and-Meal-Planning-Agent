@@ -69,4 +69,19 @@ class MealPlannerCLITest {
         assertTrue(out.contains("Nothing to undo"));
         assertFalse(out.contains("Undone."));
     }
+
+    @Test
+    void scriptModeEchoesEachCommandSkipsCommentsAndStopsAtTheEnd() {
+        String task = "# a comment\nprofile set diet=vegetarian\n\nplan 5 dinners\nundo\n";
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        new MealPlannerCLI(SmartRecipeFacade.create(new MockAIModel()),
+                new ByteArrayInputStream(task.getBytes(StandardCharsets.UTF_8)),
+                new PrintStream(bytes, true, StandardCharsets.UTF_8), true).runLoop();
+        String out = bytes.toString(StandardCharsets.UTF_8);
+        assertTrue(out.contains("> profile set diet=vegetarian"));
+        assertTrue(out.contains("> plan 5 dinners\nMeal plan:"));
+        assertTrue(out.contains("> undo\nError: Nothing to undo."));
+        assertFalse(out.contains("a comment"));
+        assertFalse(out.contains("Type 'help'"));
+    }
 }
