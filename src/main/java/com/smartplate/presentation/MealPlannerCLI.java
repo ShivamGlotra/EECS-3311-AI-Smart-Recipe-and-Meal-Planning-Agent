@@ -65,20 +65,32 @@ public class MealPlannerCLI {
     private final BufferedReader in;
     private final PrintStream out;
     private final Map<String, Recipe> workingCopies = new HashMap<>();
+    /** Script mode (--input): print each command after the prompt, as if it had been typed. */
+    private final boolean echoCommands;
 
     public MealPlannerCLI(SmartRecipeFacade facade, InputStream in, PrintStream out) {
+        this(facade, in, out, false);
+    }
+
+    /** With echoCommands the output reads like a typed session; used to run a task file. */
+    public MealPlannerCLI(SmartRecipeFacade facade, InputStream in, PrintStream out, boolean echoCommands) {
         this.facade = facade;
         this.in = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
         this.out = out;
+        this.echoCommands = echoCommands;
     }
 
-    /** Runs until "quit" or end of input. */
+    /** Runs until "quit" or end of input. Lines starting with # are comments. */
     public void runLoop() {
         out.println("SmartPlate - AI meal planning agent. AI model: " + facade.getAIModelName());
-        out.println("Type 'help' for commands.");
+        if (!echoCommands) {
+            out.println("Type 'help' for commands.");
+        }
         while (true) {
-            out.print("> ");
-            out.flush();
+            if (!echoCommands) {
+                out.print("> ");
+                out.flush();
+            }
             String line;
             try {
                 line = in.readLine();
@@ -87,12 +99,18 @@ public class MealPlannerCLI {
                 return;
             }
             if (line == null) {
-                out.println();
+                if (!echoCommands) {
+                    out.println();
+                }
                 return;
             }
             line = line.trim();
-            if (line.isEmpty()) {
+            if (line.isEmpty() || line.startsWith("#")) {
                 continue;
+            }
+            if (echoCommands) {
+                out.println();
+                out.println("> " + line);
             }
             if (line.equalsIgnoreCase("quit") || line.equalsIgnoreCase("exit")) {
                 out.println("Bye!");

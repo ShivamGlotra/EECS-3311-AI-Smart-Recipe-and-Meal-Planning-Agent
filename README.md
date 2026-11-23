@@ -21,7 +21,7 @@ Nothing to install by hand: Maven downloads every library (Anthropic Java SDK, F
 the first time you build. From the project folder:
 
 ```bash
-mvn test       # downloads dependencies, compiles, runs the 134 JUnit tests (offline, no API key)
+mvn test       # downloads dependencies, compiles, runs the 139 JUnit tests (offline, no API key)
 mvn package    # builds target/smartplate-1.0.0.jar (includes all dependencies)
 ```
 
@@ -57,6 +57,85 @@ java -jar target/smartplate-1.0.0.jar --empty    # start with an empty pantry
 ```
 
 Without building a jar: `mvn -q compile exec:java` (GUI) or `mvn -q compile exec:java -Dexec.args=--cli`.
+
+### Command-line options (standalone CLI)
+
+The agent also runs without the GUI, on a **task file** or on **standard input**, with the AI model
+chosen on the command line:
+
+```bash
+java -jar target/smartplate-1.0.0.jar --provider ollama --input examples/task.txt   # local gemma4 via Ollama
+java -jar target/smartplate-1.0.0.jar --provider gemini --input examples/task.txt   # Gemini (key in .env)
+java -jar target/smartplate-1.0.0.jar --mock --input examples/task.txt              # offline, no key
+cat examples/task.txt | java -jar target/smartplate-1.0.0.jar --mock --input -     # commands from stdin
+java -jar target/smartplate-1.0.0.jar --help                                         # list the options
+```
+
+| Option | Meaning |
+|---|---|
+| *(none)* | desktop GUI (falls back to the CLI if there is no display) |
+| `--cli` | interactive command-line interface (type `help` for the commands) |
+| `--input FILE` | run the CLI commands in `FILE`, one per line (`#` starts a comment); each command is printed before its result; the program exits at the end |
+| `--input -` | the same, reading the commands from standard input |
+| `--provider NAME` | AI model: `mock`, `anthropic`, `gemini` or `ollama`. Overrides `SMARTPLATE_AI_PROVIDER`; keys and model names (`GEMINI_API_KEY`, `OLLAMA_MODEL`, ...) still come from `.env` |
+| `--mock` | same as `--provider mock` |
+| `--empty` | start with an empty pantry instead of the sample pantry |
+| `--help` | show the options and exit |
+
+A bad option, a missing task file or a provider without its key prints a clear message and exits
+with status 2. A command that fails inside the task (e.g. `plan 9 dinners`) prints `Error: ...`
+and the task continues with the next line.
+
+**Working example.** [`examples/task.txt`](examples/task.txt) plans a week of vegetarian dinners,
+swaps a day, shows the agent trace, undoes the swap and prints the nutrition and shopping list:
+
+```text
+# examples/task.txt (excerpt)
+profile set diet=vegetarian allergies=peanuts dislikes=mushrooms time=30 servings=2
+plan 5 dinners, avoid red onion
+edit swap Tuesday for something with spinach
+trace
+undo
+shopping
+```
+
+Output of `java -jar target/smartplate-1.0.0.jar --mock --input examples/task.txt` (shortened):
+
+```text
+SmartPlate - AI meal planning agent. AI model: Mock AI (offline)
+
+> profile set diet=vegetarian allergies=peanuts dislikes=mushrooms time=30 servings=2
+Profile saved:
+...
+> plan 5 dinners, avoid red onion
+Meal plan:
+  Monday: Vegetable Fried Rice (r01, 2 servings, 20 min)
+  Tuesday: Chickpea Spinach Curry (r02, 2 servings, 30 min)
+  ...
+> edit swap Tuesday for something with spinach
+Meal plan:
+  ...
+  Tuesday: Quinoa Buddha Bowl (r17, 2 servings, 30 min)
+  ...
+> trace
+  * Request: "swap Tuesday for something with spinach" (day in request: Tuesday; constraints: none)
+  * Retrieved 30 recipes from the repository.
+  * Strategy 'pantry-first' shortlisted 12 candidate(s).
+  * Asking Mock AI (offline).
+  * AI answered: DAY: Tuesday RECIPE: r17
+  * Validation: replacement is valid
+  * Created command: Tuesday: Chickpea Spinach Curry -> Quinoa Buddha Bowl
+> undo
+Undone.
+...
+> shopping
+Shopping list:
+[ ] frozen peas: 150 g
+...
+```
+
+With `--provider ollama` or `gemini` the same task runs on the real model; the AI's choices can
+differ from run to run, but every answer is validated the same way before it is shown.
 
 **VS Code:** the same commands are ready-made tasks. Use *Terminal → Run Task…* → `SmartPlate: …`,
 or the **Task Runner** view at the bottom of the Explorer (accept the recommended extensions when
@@ -119,6 +198,8 @@ Other commands: `search <words>`, `show <id>`, `scale <id> <servings>`, `substit
 - **Stage 2 report:** [stage2-report.pdf](stage2-report.pdf) / [stage2-report.docx](stage2-report.docx) (source: [docs/STAGE2_REPORT.md](docs/STAGE2_REPORT.md))
 - **Feature demonstration videos** (F01–F11 and the CLI): links in §7 *Demonstration index* of the Stage 2 report,
   and in the "Video" row of each feature in §2
+- **Task demo video** (one task in the GUI, then the same task in the CLI with `--input`):
+  [https://drive.google.com/file/d/10y-DfH9LhKKKqrnyWkr_b7foVIDHus24/view](https://drive.google.com/file/d/10y-DfH9LhKKKqrnyWkr_b7foVIDHus24/view)
 - Stage 2 UML of the implemented system: [docs/umlet-diagrams/stage2/](docs/umlet-diagrams/stage2/)
 - Feature demonstration script: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)
 - Code explanation: [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)
