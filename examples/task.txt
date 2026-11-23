@@ -1,0 +1,14 @@
+# SmartPlate task file: one CLI command per line; lines starting with # are comments.
+# Run it with:  java -jar target/smartplate-1.0.0.jar --provider ollama --input examples/task.txt
+#         or:   java -jar target/smartplate-1.0.0.jar --mock --input examples/task.txt   (offline)
+
+# Task: plan this week's vegetarian dinners, adjust one day and get the shopping list.
+profile set diet=vegetarian allergies=peanuts dislikes=mushrooms time=30 servings=2
+pantry add rice 500 g
+recommend 2 quick dinners using rice
+plan 5 dinners, avoid red onion
+edit swap Tuesday for something with spinach
+trace
+undo
+nutrition plan
+shopping

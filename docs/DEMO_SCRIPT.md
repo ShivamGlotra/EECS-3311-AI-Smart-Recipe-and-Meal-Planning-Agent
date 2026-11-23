@@ -121,6 +121,27 @@ quit
 The first line of the CLI shows which AI model is in use (from `.env`); start with `--mock` to show
 the offline mode.
 
+## Task demo: the same task in the GUI, then in the CLI (3–5 minutes)
+
+One video that completes one whole task twice, as asked in the course feedback. Use the real model
+(`gemma4:e4b` through Ollama) for both halves.
+
+**Task:** plan this week's vegetarian dinners, avoid red onion, swap Tuesday for something with spinach,
+undo the swap, then get the nutrition and the shopping list.
+
+1. **GUI** (`java -jar target/smartplate-1.0.0.jar`, AI model box on *Ollama*):
+   Preferences (vegetarian, allergy `peanuts`, dislike `mushrooms`, 30 min) → **Save** · Pantry: add
+   `rice 500 g` · AI Assistant: `Plan 5 dinners, avoid red onion` → **Create weekly plan** · point at the
+   agent trace · `Swap Tuesday for something with spinach` → **Edit plan** (CHANGED) → **Undo** ·
+   **Plan nutrition** · **Shopping list**.
+2. **CLI**, the same task from a file, without the GUI:
+   ```bash
+   cat examples/task.txt
+   java -jar target/smartplate-1.0.0.jar --provider ollama --input examples/task.txt
+   ```
+   Scroll through the output: each command is printed before its result. Say that `--input -` reads the
+   same commands from standard input, and show `--help` for the other options.
+
 ## After recording
 Paste each link with its timestamp into **§7 Demonstration index** of `docs/STAGE2_REPORT.md` (and the
 "Video" row of each feature in §2 if you like), then regenerate `stage2-report.pdf` / `.docx`.

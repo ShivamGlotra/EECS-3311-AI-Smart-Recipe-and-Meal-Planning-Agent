@@ -12,13 +12,14 @@ runs through the code.
 Requirements: **Java 17+** and **Maven 3.8+**. No other installation is needed.
 
 ```bash
-mvn test                 # compile and run the 134 JUnit 5 tests
+mvn test                 # compile and run the 139 JUnit 5 tests
 mvn package              # builds target/smartplate-1.0.0.jar (includes all dependencies)
 
 java -jar target/smartplate-1.0.0.jar          # desktop GUI (falls back to the CLI if there is no display)
 java -jar target/smartplate-1.0.0.jar --cli    # command-line interface
 java -jar target/smartplate-1.0.0.jar --mock   # force the offline Mock AI even if an API key is set
 java -jar target/smartplate-1.0.0.jar --empty  # start with an empty pantry
+java -jar target/smartplate-1.0.0.jar --provider ollama --input examples/task.txt   # run a task file (see README)
 ```
 
 You can also run it without packaging: `mvn -q compile exec:java -Dexec.args="--cli"`.
@@ -36,6 +37,7 @@ You can also run it without packaging: `mvn -q compile exec:java -Dexec.args="--
 | `ollama` | `OllamaAdapter` → a local model served by [Ollama](https://ollama.com) |
 | anything else | the app prints an error and stops |
 | `--mock` flag | `MockAIModel`, whatever the variable says |
+| `--provider NAME` | that provider, whatever the variable says (a missing key is an error) |
 
 Optional settings: `SMARTPLATE_AI_MODEL` (Claude model id, default `claude-opus-5-5`), `GEMINI_MODEL`
 (default `gemini-flash-latest`, Google's alias for its newest Flash model), `OLLAMA_MODEL` (default
@@ -125,7 +127,7 @@ src/main/java/com/smartplate/
 └── service/        RecipeRepository (Data layer), NutritionService, ServingScaler,
                     SubstitutionService, ShoppingListService, SampleData
 src/main/resources/fonts/       IBM Plex Sans / Mono (SIL Open Font License, OFL.txt)
-src/test/java/com/smartplate/   21 JUnit 5 test classes, 134 tests
+src/test/java/com/smartplate/   22 JUnit 5 test classes, 139 tests
 ```
 
 Each package matches a package in the class diagram (`docs/umlet-diagrams/class/SmartPlate_ClassDiagram.uxf`).
@@ -378,7 +380,7 @@ Each feature lists its entry point, the classes involved, and where its tests ar
 mvn test
 ```
 
-* 134 tests in 21 classes. They cover every feature, every pattern, and the main error flows from
+* 139 tests in 22 classes. They cover every feature, every pattern, and the main error flows from
   the use-case descriptions.
 * All tests use `MockAIModel`, so they need no network or API key and always give the same result.
   `OllamaAdapterTest` runs the Ollama adapter against a small fake Ollama server inside the test

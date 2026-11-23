@@ -181,12 +181,14 @@ the facade.
 
 ```bash
 mvn compile                          # compile only (like tsc)
-mvn test                             # run all 134 tests
+mvn test                             # run all 139 tests
 mvn package                          # build target/smartplate-1.0.0.jar (includes all libraries)
 java -jar target/smartplate-1.0.0.jar            # open the desktop app
 java -jar target/smartplate-1.0.0.jar --cli      # command-line version
 java -jar target/smartplate-1.0.0.jar --mock     # force the offline AI
 java -jar target/smartplate-1.0.0.jar --empty    # start with an empty pantry
+java -jar target/smartplate-1.0.0.jar --provider ollama --input examples/task.txt   # run a task file
+java -jar target/smartplate-1.0.0.jar --help     # every option
 mvn test -Dtest=MealPlanningAgentTest            # run one test class
 mvn test -Dtest=GuiPanelsTest#createEditAndUndoMarkTheChangedDay   # run one test
 ```
@@ -245,6 +247,7 @@ src/main/resources/fonts/       IBM Plex fonts used by the GUI (+ OFL.txt licenc
 
 src/main/java/com/smartplate/
   app/SmartPlateApp.java              main(): chooses real/mock AI, seeds the pantry, starts GUI or CLI
+  app/CommandLineOptions.java         parses --cli, --input, --provider, --mock, --empty, --help
   facade/SmartRecipeFacade.java       FACADE: one method per feature; owns profile, pantry, current plan
   agent/
     MealPlanningAgent.java            the AI agent: shortlist → ask AI → validate → revise once
@@ -300,7 +303,7 @@ src/main/java/com/smartplate/
       Icons.java                      small icons drawn in code
       TaskRunner.java                 runs AI calls in the background (or directly in tests)
 
-src/test/java/com/smartplate/         21 test classes, 134 tests (see section 12)
+src/test/java/com/smartplate/         22 test classes, 139 tests (see section 12)
 ```
 
 ---
@@ -484,10 +487,13 @@ The same facade method as the GUI, so the behaviour is identical.
 ## 9. File-by-file reference: functions and algorithms
 
 ### 9.1 `app/SmartPlateApp.java`
-- `main(args)` (:35): picks the AI (`chooseModel`, :59: `MockAIModel` if `--mock` is given, otherwise
-  `AIModelFactory.fromEnvironment()`). A mistyped `SMARTPLATE_AI_PROVIDER` throws
-  `IllegalArgumentException`; `main` prints its message and exits. Then it creates the facade, adds
-  `SampleData.pantry()` unless `--empty`, and starts the CLI (`--cli` or no screen) or the GUI.
+- `main(args)` (:43): `CommandLineOptions.parse(args)` reads the options (an unknown option or a missing
+  value throws `IllegalArgumentException`). `chooseModel(provider)` (:95) uses the `--provider` /
+  `--mock` choice if there is one (a missing key is an error), otherwise
+  `AIModelFactory.fromEnvironment()`. Any of these errors is printed and the program exits with status 2.
+  Then it creates the facade, adds `SampleData.pantry()` unless `--empty`, and starts: a task file
+  (`--input FILE`, or `-` for stdin) through `MealPlannerCLI` in script mode (each command is echoed),
+  the interactive CLI (`--cli` or no screen), or the GUI.
 
 ### 9.2 `facade/SmartRecipeFacade.java`
 Every method validates its input, calls one subsystem, and returns or throws. Notes:
@@ -716,7 +722,7 @@ Errors print as `Error: <message>`; the loop never crashes on a `SmartPlateExcep
 
 ## 12. Tests
 
-`mvn test` runs **134 tests** in 21 classes, all offline (no real AI is called):
+`mvn test` runs **139 tests** in 22 classes, all offline (no real AI is called):
 
 | Test class | What it protects |
 |---|---|
@@ -733,7 +739,8 @@ Errors print as `Error: <message>`; the loop never crashes on a `SmartPlateExcep
 | `ai/GeminiAdapterTest` | the Gemini adapter against a fake Gemini server: URL, key header, request JSON, thought parts skipped, every error, and the whole agent through it |
 | `ai/OllamaAdapterTest` | the Ollama adapter against a fake Ollama server (a tiny `HttpServer` in the test): request JSON, `<think>` removal, 404/500/empty/unreachable errors, and the whole agent through it |
 | `facade/SmartRecipeFacadeTest` | all 10 features end to end |
-| `presentation/MealPlannerCLITest` | a scripted CLI session |
+| `presentation/MealPlannerCLITest` | a scripted CLI session; script mode (`--input`) echoes commands and skips `#` comments |
+| `app/CommandLineOptionsTest` | every option, unknown options and missing values are clear errors |
 | `presentation/gui/GuiPanelsTest` | every GUI tab, headless (no window needed) |
 
 A test looks like Jest:

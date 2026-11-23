@@ -40,11 +40,13 @@ reports the failure. Four interchangeable models implement `AIModel`:
 | Local model through Ollama (used: `gemma4:e4b`) | `OllamaAdapter`          | free, runs on the user's machine          |
 | Anthropic Claude (official Java SDK)            | `AIAdapter` → `AIClient` | optional, key in `.env`                   |
 
-The model is chosen from `.env` at start-up and can be switched at run time in the GUI (feature F11).
+The model is chosen from `.env` (or `--provider` on the command line) at start-up and can be switched at
+run time in the GUI (feature F11).
 
 **Implementation status.** All ten Stage 1 features (F01–F10) and one new feature (F11, AI model
-selection) work in both the GUI and the CLI. All five Stage 1 design patterns are implemented, plus a
-Factory for model creation. `mvn test` runs **134 automated tests (0 failures)**. Gemini and the local
+selection) work in both the GUI and the CLI; the CLI also runs
+stand-alone on a task file or standard input (`--input`, `--provider`). All five Stage 1 design patterns are implemented, plus a
+Factory for model creation. `mvn test` runs **139 automated tests (0 failures)**. Gemini and the local
 Ollama model were run by the author; the Claude path is implemented but was only unit-tested, because no
 Anthropic key was available.
 
@@ -67,7 +69,10 @@ Anthropic key was available.
 
 All paths are under `src/main/java/com/smartplate/`. Every feature is reached through
 `SmartRecipeFacade` from both `MealPlannerGUI` (via the tab panels in `presentation/gui/`) and
-`MealPlannerCLI`. "Video" links are filled in from §7.
+`MealPlannerCLI`. "Video" links are filled in from §7. Each feature states its original Stage 1
+requirement and shows screenshots of the running application (GUI; the CLI is shown at the end of this
+section). The AI features (F04–F06, F11) are shown with the local model `gemma4:e4b` through Ollama;
+the deterministic features were captured with the offline Mock AI selected (no AI is involved in them).
 
 ### F01 — Preference Profile Management
 
@@ -81,27 +86,47 @@ All paths are under `src/main/java/com/smartplate/`. Every feature is reached th
 | Design patterns            | Facade                                                                                                                                                                                                                                                        |
 | Video                      | [F01 video](https://drive.google.com/file/d/1ywMRZXXX9ilsV7yKfPaxjmKeJLjajj0t/view) (§7)                                                                                                                                                                                                                                                       |
 
+**Original requirement (Stage 1 F01).** "Lets the user configure dietary preferences, allergies, disliked ingredients, maximum cooking time, and default serving size." **Difference:** As specified; accented letters ("jalapeño") are accepted (A6).
+
 **How it works.** The panel or CLI builds a `UserProfile` and calls `setupProfile`. `validate()`
 returns every problem (servings or time below 1, unknown diet, duplicate or malformed entries). If the
 list is empty the facade stores the profile; otherwise it throws `InvalidProfileException`, the previous
 profile stays active, and the GUI lists the problems in a red banner and outlines each offending field.
 
+![F01: a valid profile is saved](screenshots/stage2/F01-preferences-saved.png)
+
+*F01: a valid profile is saved.*
+
+![F01: an invalid profile is rejected; the previous one stays active](screenshots/stage2/F01-preferences-error.png)
+
+*F01: an invalid profile is rejected; the previous one stays active.*
+
 ### F02 — Pantry Inventory Management
 
 | Field                      | Entry                                                                                                         |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | Stage 1 reference          | F02 / UC02 / SD01                                                                                             |
 | Status                     | **Implemented** (adding an item already in the pantry merges compatible units, e.g. 500 g + 1 kg)             |
 | Type                       | Deterministic                                                                                                 |
-| Classes / responsibilities | `PantryPanel` (form + table); `MealPlannerCLI` (`pantry add                                                   | update | remove`); `SmartRecipeFacade`; `Pantry`(items, rules);`PantryItem`, `Ingredient`, `PantryAction`; `Units` (unit families and conversion) |
+| Classes / responsibilities | `PantryPanel` (form + table); `MealPlannerCLI` (`pantry add`, `pantry update`, `pantry remove`); `SmartRecipeFacade`; `Pantry` (items, rules); `PantryItem`, `Ingredient`, `PantryAction`; `Units` (unit families and conversion) |
 | Key methods                | `SmartRecipeFacade.managePantry`, `Pantry.addItem`, `Pantry.updateItem`, `Pantry.removeItem`, `Units.convert` |
 | Design patterns            | Facade                                                                                                        |
 | Video                      | [F02 video](https://drive.google.com/file/d/1LSwei6CiMmU82NGKRMQz3Yz1bKb9omcT/view) (§7)                                                                                                       |
+
+**Original requirement (Stage 1 F02).** "Lets the user add, update, remove, and view the ingredients currently in the pantry." **Difference:** As specified; compatible units are merged (500 g + 1 kg = 1.5 kg).
 
 **How it works.** `managePantry(action, item)` dispatches ADD / UPDATE / REMOVE to `Pantry`. Adding an
 existing item converts and adds the quantity if the units are compatible; zero or negative quantities,
 unknown units, incompatible units, and updating or removing a missing item are rejected with a message
 shown next to the right field.
+
+![F02: adding 500 g of rice merges with 1 kg already in the pantry](screenshots/stage2/F02-pantry-add.png)
+
+*F02: adding 500 g of rice merges with 1 kg already in the pantry.*
+
+![F02: a quantity of 0 is rejected next to the field](screenshots/stage2/F02-pantry-error.png)
+
+*F02: a quantity of 0 is rejected next to the field.*
 
 ### F03 — Recipe Search
 
@@ -115,8 +140,14 @@ shown next to the right field.
 | Design patterns            | Facade                                                                                                                                                                  |
 | Video                      | [F03 video](https://drive.google.com/file/d/19Z8dPHL6dpDr7XH5LlcFyngEJ31RmJvF/view) (§7)                                                                                                                                                                 |
 
+**Original requirement (Stage 1 F03).** "Searches the recipe repository for recipes matching a name, ingredient, or search term." **Difference:** As specified.
+
 **How it works.** An empty query is rejected; otherwise every word of the query must appear in the
 recipe's name, tags or ingredient names. The results table opens the selected recipe.
+
+![F03: searching for "spinach" (name, tag or ingredient)](screenshots/stage2/F03-search.png)
+
+*F03: searching for "spinach" (name, tag or ingredient).*
 
 ### F04 — AI Recipe Recommendation
 
@@ -130,12 +161,18 @@ recipe's name, tags or ingredient names. The results table opens the selected re
 | Design patterns            | Facade, Strategy, Adapter                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Video                      | [F04 video](https://drive.google.com/file/d/1iwPiz7qdy6VLMnskpPEJhCKe_W3s3Liv/view) (§7)                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
+**Original requirement (Stage 1 F04).** "Recommends recipes that fit the user's preferences, pantry contents, and natural-language request." **Difference:** As specified; hard constraints in the request text (diet, "avoid …", time) are also enforced (§4, #1).
+
 **How it works.** The request ("3 quick vegetarian dinners using rice, avoid red onion") is parsed
 into constraints that are added to a copy of the profile. The strategy filters and ranks all recipes
 and keeps 15 candidates. The agent builds a prompt (`TASK`, `REQUEST`, `DIET`, `AVOID`, `MAX_TIME`,
 `CANDIDATES`, `RESPONSE_FORMAT`) and asks the model, which answers `RECIPES: id, id`. Unknown ids and
 recipes that fail validation become violations; the agent then asks once more with
 `PREVIOUS_VIOLATIONS` and `EXCLUDE`. Only validated recipes are returned, and the trace shows each step.
+
+![F04: validated recommendations and the agent trace](screenshots/stage2/F04-recommend.png)
+
+*F04 with gemma4: three recommendations, each validated against the profile; the trace shows the shortlist, the AI's answer and the validation.*
 
 ### F05 — AI Weekly Meal Planning
 
@@ -149,10 +186,20 @@ recipes that fail validation become violations; the agent then asks once more wi
 | Design patterns            | Facade, Strategy, Adapter, Composite                                                                                                                      |
 | Video                      | [F05 video](https://drive.google.com/file/d/1Hcvr7EDqgcHOkOPGXcPD3K7ZLydDc1of/view) (§7)                                                                                                                                                   |
 
+**Original requirement (Stage 1 F05).** "Creates a meal plan of 5 to 7 days (one dinner per day) from the user's preferences, pantry, and request." **Difference:** As specified; decimal day counts are rounded (A8).
+
 **How it works.** The number of days (default 7) must be 5–7, else an error is shown without calling
 the AI. The model answers one `Day: id` line per day; each id becomes a `PlannedMeal` in a `MealPlan`.
 `validatePlan` checks every day exists and every recipe respects allergies, dislikes, diet and time.
 One revision is allowed; the facade stores the valid plan and clears the undo history.
+
+![F05: a validated 5-day plan; the trace shows the constraints read from the request](screenshots/stage2/F05-plan.png)
+
+*F05 with gemma4: a validated 5-day plan; the trace shows the constraints read from the request (5 days, max 40 min, avoid red onion and mushrooms) and the AI's answer.*
+
+![F05: an 8-day plan is rejected before the AI is asked](screenshots/stage2/F05-plan-error.png)
+
+*F05: an 8-day plan is rejected before the AI is asked.*
 
 ### F06 — Meal Plan Editing and Undo
 
@@ -166,10 +213,16 @@ One revision is allowed; the facade stores the valid plan and clears the undo hi
 | Design patterns            | Facade, Adapter, Command                                                                                                                                                                                                                                                                                                 |
 | Video                      | [F06 video](https://drive.google.com/file/d/1Ow1V1OE_rz0STjk40dB4HSkcRZUZSxeL/view) (§7)                                                                                                                                                                                                                                                                                                                  |
 
+**Original requirement (Stage 1 F06).** "Replaces one meal in the plan from a natural-language request and lets the user undo the last change." **Difference:** As specified; if no day is named, the AI chooses it and the choice is validated (§4, #11).
+
 **How it works.** The agent finds the day named in the request (`Days.findIn`; "sun-dried" is not
 Sunday), or lets the model pick it. The model answers `DAY:` and `RECIPE:`; the replacement must exist,
 differ from the current meal and pass `validateRecipe`. The agent returns a `ReplaceMealCommand`, which
 the facade runs through `CommandHistory`; Undo pops it and restores the old meal.
+
+![F06: only Tuesday changes (CHANGED marker, before → now); Undo restores it](screenshots/stage2/F06-edit.png)
+
+*F06 with gemma4: only Tuesday changes, to a recipe with spinach (CHANGED marker, before → now); Undo restores it.*
 
 ### F07 — Serving-Size Adjustment
 
@@ -183,8 +236,14 @@ the facade runs through `CommandHistory`; Undo pops it and restores the old meal
 | Design patterns            | Facade                                                                                                                                                                |
 | Video                      | [F07 video](https://drive.google.com/file/d/1G7sIdaL8EloZPbYJlvwdGIg7Ukr-2eDs/view) (§7)                                                                                                                                                               |
 
+**Original requirement (Stage 1 F07).** "Scales a recipe to a requested number of servings." **Difference:** As specified.
+
 **How it works.** Every quantity is multiplied by `servings / recipe.servings`; fewer than 1 serving
 or an invalid quantity is rejected. The scaled copy is shown as a working copy until Reset.
+
+![F07: Vegetable Fried Rice scaled from 2 to 4 servings (a working copy)](screenshots/stage2/F07-scale.png)
+
+*F07: Vegetable Fried Rice scaled from 2 to 4 servings (a working copy).*
 
 ### F08 — Ingredient Substitution
 
@@ -198,11 +257,17 @@ or an invalid quantity is rejected. The scaled copy is shown as a working copy u
 | Design patterns            | Facade                                                                                                                                                                                           |
 | Video                      | [F08 video](https://drive.google.com/file/d/1HX83K0ypPfzVPMQDL0fsDOpYrOL9DvSR/view) (§7)                                                                                                                                                                                          |
 
+**Original requirement (Stage 1 F08).** "Replaces an ingredient in a recipe with a suitable substitute." **Difference:** As specified; a disliked dairy food no longer blocks its plant-based substitute (A4), and the steps name the substitute (A9).
+
 **How it works.** The facade checks the recipe contains the ingredient; the service returns the first
 known substitute that does not conflict with the profile, then replaces the ingredient and converts the
 quantity with the conversion factor (e.g. butter → olive oil ×0.8, in ml). The steps are rewritten to name
 the substitute ("Whisk eggs with oat milk"), also where they use a short name such as "chicken" for chicken
 breast. Nutrition is stored per recipe, so it does not change after a substitution.
+
+![F08: milk replaced by oat milk; the steps now say "oat milk"](screenshots/stage2/F08-substitute.png)
+
+*F08: milk replaced by oat milk; the steps now say "oat milk".*
 
 ### F09 — Nutrition Information
 
@@ -216,9 +281,15 @@ breast. Nutrition is stored per recipe, so it does not change after a substituti
 | Design patterns            | Facade, Composite                                                                                                                                                                                                                      |
 | Video                      | [F09 video](https://drive.google.com/file/d/1MELSn5JjCpHipXkz5Yd-bdLFV3PyUmkE/view) (§7)                                                                                                                                                                                                                                |
 
+**Original requirement (Stage 1 F09).** "Calculates calories, protein, carbohydrates, and fat for a recipe or for a whole meal plan." **Difference:** As specified.
+
 **How it works.** A recipe's nutrition is its per-serving values times servings. For the plan,
 `MealPlan.getNutrition()` sums `PlannedMeal.getNutrition()` of its children, so the service treats one
 meal and the whole plan the same way.
+
+![F09: nutrition of the whole plan, per day](screenshots/stage2/F09-plan-nutrition.png)
+
+*F09: nutrition of the whole plan, per day.*
 
 ### F10 — Shopping List Generation
 
@@ -232,9 +303,15 @@ meal and the whole plan the same way.
 | Design patterns            | Facade, Composite                                                                                                                                                                        |
 | Video                      | [F10 video](https://drive.google.com/file/d/1N3hLoaEgYH1XWglGZNVKePycFNLXcyjM/view) (§7)                                                                                                                                                                                  |
 
+**Original requirement (Stage 1 F10).** "Generates a shopping list from the meal plan, subtracting what is already in the pantry." **Difference:** As specified; counted items are rounded up to whole pieces (A1).
+
 **How it works.** The plan's ingredients (collected through the Composite) are merged per ingredient in
 compatible units, the pantry is subtracted, counted items are rounded up to whole pieces, and notes
 explain skipped or incomparable lines. The GUI also lists what the pantry already covers.
+
+![F10: shopping list for the plan minus the pantry](screenshots/stage2/F10-shopping-list.png)
+
+*F10: shopping list for the plan minus the pantry.*
 
 ### F11 — AI Model Selection (new)
 
@@ -243,17 +320,53 @@ explain skipped or incomparable lines. The GUI also lists what the pantry alread
 | Stage 1 reference          | **New** (extends Stage 1 §1.5 "the provider can change without touching `MealPlanningAgent`") / new UC11 / new SD07                                                                                                                                                                                                                                                  |
 | Status                     | **New**                                                                                                                                                                                                                                                                                                                                                              |
 | Type                       | Deterministic (chooses which LLM the hybrid features use)                                                                                                                                                                                                                                                                                                            |
-| Classes / responsibilities | `MealPlannerGUI` (AI model box; disabled during a request); `SmartRecipeFacade` (`setAIProvider`, `getAIProviders`); `AIModelFactory` (builds the right model, reports missing keys); `EnvFile` (reads `.env`); `GeminiAdapter`, `OllamaAdapter`, `AIAdapter`/`AIClient`, `MockAIModel`; `MealPlanningAgent.setAIModel`; `SmartPlateApp` (start-up choice, `--mock`) |
+| Classes / responsibilities | `MealPlannerGUI` (AI model box; disabled during a request); `SmartRecipeFacade` (`setAIProvider`, `getAIProviders`); `AIModelFactory` (builds the right model, reports missing keys); `EnvFile` (reads `.env`); `GeminiAdapter`, `OllamaAdapter`, `AIAdapter`/`AIClient`, `MockAIModel`; `MealPlanningAgent.setAIModel`; `SmartPlateApp` and `CommandLineOptions` (start-up choice, `--provider`, `--mock`) |
 | Key methods                | `SmartRecipeFacade.setAIProvider`, `AIModelFactory.fromEnvironment/create/forProvider/missingSetting`, `EnvFile.load`, `MealPlanningAgent.setAIModel`, `AssistantPanel.onBusyChange`                                                                                                                                                                                 |
 | Design patterns            | Adapter (two new adapters), Factory, Facade                                                                                                                                                                                                                                                                                                                          |
 | Video                      | [F11 video](https://drive.google.com/file/d/1lniVdSDxKqcIcNHJ7S1WSa-eCL54uGAN/view) (§7)                                                                                                                                                                                                                                                                                                                                                              |
+
+**Original requirement.** New in Stage 2: no Stage 1 requirement. It builds on Stage 1 §1.5 ("the provider can change without touching `MealPlanningAgent`") and lets the user pick the LLM at run time.
 
 **How it works.** At start-up `SmartPlateApp` asks `AIModelFactory` for the model named by
 `SMARTPLATE_AI_PROVIDER` (default `auto`: Claude if its key is set, else Gemini, else Mock). In the
 window, choosing a provider calls `setAIProvider`, which re-reads `.env`; if the key is missing, the
 previous model stays and the box shows the reason. Otherwise the factory builds the adapter and the
 agent uses it from the next request on; a running request keeps the model it started with. The CLI uses
-the start-up choice (or `--mock`).
+the start-up choice (`--provider NAME`, `--mock`, or `.env`).
+
+![F11: the AI model box with Ollama (gemma4:e4b) in use](screenshots/stage2/F11-model-list.png)
+
+*F11: the AI model box shows the model in use, Ollama (gemma4:e4b); the list offers Mock, Claude, Gemini and Ollama.*
+
+![F11: switching to Claude without a key is refused](screenshots/stage2/F11-model-refused.png)
+
+*F11 error case: switching to Claude without a key was refused; the previous model stays and the box is outlined in red.*
+
+### Standalone command-line interface (CLI)
+
+Every feature above is also available in the CLI (`MealPlannerCLI`, the same facade calls as the GUI).
+Besides the interactive mode (`--cli`), the agent runs **without the GUI on a task file or on
+standard input**, with the AI model chosen on the command line:
+
+```text
+java -jar target/smartplate-1.0.0.jar --provider ollama --input examples/task.txt
+cat examples/task.txt | java -jar target/smartplate-1.0.0.jar --mock --input -
+```
+
+`--input FILE` (or `-` for stdin) runs the commands in the file, prints each command before its result
+and exits; `--provider mock|anthropic|gemini|ollama` overrides `.env`; `--help` lists every option
+(README, "Command-line options"). Classes: `CommandLineOptions` (parses and checks the options; a bad
+option exits with status 2), `SmartPlateApp` (chooses the model and the interface), `MealPlannerCLI`
+(script mode echoes each command). `examples/task.txt` is the working example: profile → recommend →
+plan → edit → trace → undo → nutrition → shopping list.
+
+![CLI: running the task file examples/task.txt](screenshots/stage2/CLI-task-file.png)
+
+*CLI: the task file runs every step of the agent from the terminal (Mock AI shown; `--provider ollama` uses gemma4).*
+
+![CLI: the options and a clear error for a missing key](screenshots/stage2/CLI-help.png)
+
+*CLI: `--help`, and a provider whose key is missing is a clear error instead of a silent fallback.*
 
 ---
 
@@ -380,6 +493,7 @@ The updated SD03, SD04 and SD05 are in `docs/umlet-diagrams/stage2/sequence/` (P
 | 15  | Disliking an ingredient blocks every name containing it                     | A disliked dairy food ignores non-dairy ingredients named after it; allergies unchanged                                                                                             | "Milk" dislike blocked oat milk, its own substitute                                                                      | `DietRules.matchesDislike`                                                    |
 | 16  | Numbers in a request read as digits only ("9.5 days" was read as 5 days)    | Decimals are read; days round to the nearest whole day, a half toward 5–7; recipe counts and servings round to nearest; time limits round down; huge numbers are an error           | A user found that "dinner for 9.5 days" silently produced a 5-day plan                                                   | `RequestConstraints.roundTowardRange`, `number`; two tests                    |
 | 17  | Not specified                                                               | `Days`, `SampleData` (30 recipes, pantry, 33 substitutions), `SmartPlateApp`, `MAX_CANDIDATES = 15`                                                                                 | Needed to run; short prompts                                                                                             | —                                                                             |
+| 18  | CLI reads commands typed at the prompt | Stand-alone mode: `--input FILE` / `--input -` (stdin) runs a task file and exits; `--provider` picks the model; `--help` (`CommandLineOptions`) | Course feedback (Nov 2026): the agent must run directly from a terminal on a task file | The CLI can be scripted and tested end to end; required for Stage 3 |
 
 ### 4.2 New and substantially modified features (Section 3 of the instructions)
 
@@ -456,6 +570,7 @@ Drawn from the Claude Code session history and confirmed by the author.
 | CL-14 (29 Oct)    | Prepare the feature videos                            | Phase E1: a recording script                                                                                                               | Wrote `docs/DEMO_SCRIPT.md` after running every error case in the CLI; found that a second `undo` printed "Undone." before the error, and prepared a fix with a test                                         | Applied the A7 fix and committed it                                                                                                                      | Incorporated (`f8fe10f`)                                  |
 | CL-15 (29 Oct)    | A bug found by the author                             | "Give me dinner for 9.5 days gives me a 5 day dinner"; then "round down or up whichever is closer"                                         | Traced it to the number patterns (other decimals were also misread or ignored); implemented the rounding rule with two tests on `fix/decimalNumbersInRequests`; committed and pushed at the author's request | Found the bug; chose the rounding behaviour; reviewed and merged the branch (PR #10)                                                                     | Incorporated (`c022ae4`)                                  |
 | CL-16 (6 Nov) | A bug found by the author while recording | "It still says soy sauce after substitution. It still says milk too when I tried the GUI. Wanna check it?" | Found the cause (the steps were copied unchanged); wrote the step rewriting, including short names ("chicken" for chicken breast) and plurals, with two tests on `fix/substitutionUpdatesSteps`; checked all 75 substitution–recipe pairs | Found the bug; reviewed the fix and merged it (PR #13); found that a stale jar was why the CLI still showed the old text; re-recorded the F08 and CLI videos | Incorporated (`a20dab8`) |
+| CL-17 (23 Nov) | Act on course feedback | Pasted the course feedback email (demo video, CLI with file input, screenshots); "go with 1 and 2" | Checked the submission against it; added `--input`, `--provider` and `--help` with five tests and a README section; drove the GUI on a virtual display to capture every feature; added the screenshots and each feature's original requirement to this report | Decided the scope; records the GUI-then-CLI task video; reviews and merges the branches | Incorporated (`3639281`) |
 
 ---
 
@@ -477,13 +592,14 @@ meaningful code commits across the stage.
 | 2: 27 Oct – 2 Nov           | 9                       | [`6bfd56c`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/6bfd56cb0beb90b7119c453886d2a93d1510aee3) whole-piece rounding · [`f70e701`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/f70e7019f2aec6cc3a948f6c0e9217382b0f8389) "sun-dried" day fix · [`86b5b1e`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/86b5b1e1cf74bcc80ce37ec172a38af6f112368e) multi-word avoid · [`db82527`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/db8252718e733b5973c79732fa81ece07d831b12) dairy dislikes · [`9deb476`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/9deb476d92eb3612731fb4691d64040870ee2fe8) one model per request · [`82148d6`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/82148d65124a2bb52b3e12a67ef1a88d8f01e81a) accented entries · [`94a8a8a`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/94a8a8af23cd176977b6dbfc8b441bfc0bd1f3e7) boundary tests · [`f8fe10f`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/f8fe10f19174e2c19e2413b9d536fdd188cca66d) CLI undo message · [`c022ae4`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/c022ae494397df99984956f9f1974aa27eb0614f) decimal numbers in requests |
 | 3: 3–9 Nov                  | 1                       | [`a20dab8`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/a20dab8ba9a0e3f350ec4d57a9c1efc147b28645) substitution also updates the recipe steps (A9) |
 | **Total**                   | **16**                  | 15 required in total                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Update after course feedback (23 Nov) | 1 | [`3639281`](https://github.com/ShivamGlotra/EECS-3311-AI-Smart-Recipe-and-Meal-Planning-Agent/commit/3639281f61a25b3cde22f0dc4a22958c91fa2c67) standalone CLI: `--input`, `--provider`, `--help` |
 
 Pull requests: #3–#10 and #13 (one per fix branch; A7 was committed directly on `develop`). Documentation-only commits (report, diagrams, README) are not
 counted.
 
 ### 6.2 Checks performed
 
-- **Automated tests:** `mvn test` → **134 tests, 0 failures** (JUnit 5, all offline; 16 GUI tests run
+- **Automated tests:** `mvn test` → **139 tests, 0 failures** (JUnit 5, all offline; 16 GUI tests run
   headless). The agent loop is tested with scripted bad AI answers; every AI adapter is tested against
   a fake server speaking its API.
 - **Running the application:** the packaged jar was run through the CLI and the GUI after each change
@@ -537,3 +653,4 @@ CLI walk-through video. The recording script is in `docs/DEMO_SCRIPT.md`.
 | F10 Shopping List Generation      | GUI (pantry subtracted, whole pieces) + CLI                            | [F10 video](https://drive.google.com/file/d/1N3hLoaEgYH1XWglGZNVKePycFNLXcyjM/view)  |
 | F11 AI Model Selection (new)      | GUI (switch model, missing-key message, boxes locked during a request) | [F11 video](https://drive.google.com/file/d/1lniVdSDxKqcIcNHJ7S1WSa-eCL54uGAN/view)  |
 | CLI walk-through                  | Every command in one session, including the error cases                | [CLI video](https://drive.google.com/file/d/131eKa70tO4QaSagrtydwqna8EfuEHVRr/view)  |
+| Task demo: one task in the GUI, then the same task in the CLI (`--input`) | Profile → plan → edit → undo → shopping list, first in the GUI, then `java -jar … --provider ollama --input examples/task.txt` | [Task demo video](https://drive.google.com/file/d/10y-DfH9LhKKKqrnyWkr_b7foVIDHus24/view) |
